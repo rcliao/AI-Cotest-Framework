@@ -8,6 +8,7 @@ import random
 import time
 import SimpleHTTPServer
 import socket
+import cgi
 
 import urllib
 import urlparse
@@ -39,52 +40,52 @@ style = """
     }
     body {
         font-family:Calibri,Helvetica,Arial;
-        font-size:9pt;
+        font-size:11pt;
         color:#111;
-		width: 1000px;
-		margin: 0 auto;
-		/*background: -webkit-gradient(linear, left top, 0% 100%, from(#E6E6B8), to(#4C4C3D));*/
-		background-color: rgb(82,82,77);
-		background-image: -webkit-gradient(linear, 0 0, 0 100%, color-stop(.1, rgba(255, 255, 255, .3)), color-stop(.5, transparent), to(transparent));
-		-webkit-background-size: 5px 3px;
+        width: 1000px;
+        margin: 0 auto;
+        /*background: -webkit-gradient(linear, left top, 0% 100%, from(#E6E6B8), to(#4C4C3D));*/
+        background-color: rgb(82,82,77);
+        background-image: -webkit-gradient(linear, 0 0, 0 100%, color-stop(.1, rgba(255, 255, 255, .3)), color-stop(.5, transparent), to(transparent));
+        -webkit-background-size: 5px 3px;
     }
-	#wrapper {
-		margin: 0px auto;
-		padding: 10px 10px;
-		width: 1000px;
-		min height: 600px;
-		background: #F0F0F0;
-		border-style:groove;
-		border-width:5px;
-		border-color:#FFCC33;
-		border-top-style:none;
-	}
-	#headerIMG {
-		width:1020px;
-		border-style:groove;
-		border-width:5px;
-		border-color:#FFCC33;
-		border-top-style:none;
-		border-bottom-style:none;
-	}
-	#headerwrap {
-		width: 1000px;
-		float: left;
-		margin: 0 auto;
-	}
-	#header {
-		font-size:18pt;
-		color:#FFF;
-		height: 40px;
-		background: #FFCC33;
-		/*border-radius: 10px;*/
-		border: 1px solid #ebb81f;
-		margin: 10px;
-		padding: 5px;
-		vertical-align:middle;
-		position:relative;
-		top:-50%;
-	}
+    #wrapper {
+        margin: 0px auto;
+        padding: 10px 10px;
+        width: 1000px;
+        min height: 600px;
+        background: #F0F0F0;
+        border-style:groove;
+        border-width:5px;
+        border-color:#FFCC33;
+        border-top-style:none;
+    }
+    #headerIMG {
+        width:1020px;
+        border-style:groove;
+        border-width:5px;
+        border-color:#FFCC33;
+        border-top-style:none;
+        border-bottom-style:none;
+    }
+    #headerwrap {
+        width: 1000px;
+        float: left;
+        margin: 0 auto;
+    }
+    #header {
+        font-size:14pt;
+        color:#FFF;
+        height: 40px;
+        background: #FFCC33;
+        /*border-radius: 10px;*/
+        border: 1px solid #ebb81f;
+        margin: 10px;
+        padding: 5px;
+        vertical-align:middle;
+        position:relative;
+        top:-50%;
+    }
     hr {
         color:#111;
         background-color:#555;
@@ -188,23 +189,25 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <style>"""  + style + """</style>"""
         if str(self.server.opts['sort'])=='True':
             head += """
-                <script type="text/javascript" src="/js/jquery-1.2.6.min.js"></script>
+                <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
                 <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
+                <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
                 """
         head += """</head><body><b>
-		<div id="headerIMG">
-		<img src="/data/img/header4ants.jpg">
-		</div>
-		<div id="wrapper"><div id = "headerwrap">
-		<a href='/' name=top> Login </a> | 
-		<a href='/' name=top> Register </a>
-		<div id="header">
-		<a href='/' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <div id="headerIMG">
+        <img src="/data/img/header4ants.jpg">
+        </div>
+        <div id="wrapper"><div id = "headerwrap">
+        <a href='/login' name=top> Login </a> | 
+        <a href='/register' name=top> Register </a>
+        <div id="header">
+        <a href='/' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/' name=top><img src="data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/ranking'><img src="data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/maps'><img src="data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='http://antserver.ddns01.com:8080/AntServer/AntServer/' title='Upload your bot'><img src="data/img/uploadIco.png"/> Upload Bot </a>
-		</div></div>
+        <a href='/upload' title='Upload your bot'><img src="data/img/uploadIco.png"/> Upload Bot </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/admin' title='Admin'> Admin </a>
+        </div></div>
         <br><p></b>
         """
         return head
@@ -310,19 +313,19 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_howto(self, match):
         html = self.header( "HowTo" )
         html += """
-		Here's how to play a game on TCP...</ br>
-		<ol>
-		<li>Download a client from the above menu (one is for Python 2.x the other for Python 3.x)</li>
-		<li>Run: python tcpclient.py 209.62.17.40 2081 "python MyBot.py" username password -1</li>
-		<li>Change the game runner to fit your bot. (Can be any command.)</li>
-		<li>Change choose unique username and password pair. (Anything unique works.)</li>
-		<li>The last parameter is the number of games to play in a row. Default is -1, if not specified, which causes it to play games until you tell it to stop. (This is what you usually want)</li>
-		<li>See your rank in the ranking page.</li>
-		<li>Profit!</li>
-		</ol>
-		</ br>
-		Notes: Use python 2.x. Run tcpclient.py without params to see usage.
-		"""
+        Here's how to play a game on TCP...</ br>
+        <ol>
+        <li>Download a client from the above menu (one is for Python 2.x the other for Python 3.x)</li>
+        <li>Run: python tcpclient.py 209.62.17.40 2081 "python MyBot.py" username password -1</li>
+        <li>Change the game runner to fit your bot. (Can be any command.)</li>
+        <li>Change choose unique username and password pair. (Anything unique works.)</li>
+        <li>The last parameter is the number of games to play in a row. Default is -1, if not specified, which causes it to play games until you tell it to stop. (This is what you usually want)</li>
+        <li>See your rank in the ranking page.</li>
+        <li>Profit!</li>
+        </ol>
+        </ br>
+        Notes: Use python 2.x. Run tcpclient.py without params to see usage.
+        """
         html += self.footer()
         html += "</body></html>"
         self.wfile.write(html)
@@ -495,6 +498,134 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.send_head(mime_type)
         self.wfile.write(self.server.cache[fname] )
 
+    def serve_upload(self, match):
+        self.send_head()
+        # create the html page for uploading file using the same header
+        html = self.header("Upload File Here")
+        html += """
+        <form enctype="multipart/form-data" action="/uploading" method="post">
+        <p>Password: <input type="text" name="password"></p>
+        <p>File: <input type="file" name="file"></p>
+        <p><input type="submit" value="Upload"></p>
+        </form>
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_uploading(self, match):
+        # get the form data from the post request
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        # A nested FieldStorage instance holds the file
+        fileitem = form['file']
+        password = form['password']
+
+        # Test if the file was uploaded
+        if fileitem.filename:
+           
+           # strip leading path from file name to avoid directory traversal attacks
+           fn = os.path.basename(fileitem.filename)
+           # upload the bot under /Bots/ Folder as it is
+           open('Bots/' + fn, 'wb').write(fileitem.file.read())
+           message = 'The file "' + fn + '" was uploaded successfully'
+           
+        else:
+           message = 'No file was uploaded'
+
+        # Automatically execute the bot as tcpclient
+        if fn:
+            # init the filename, filepath to create command differently for each extension
+            botname,sep,ext = fn.rpartition('.')
+
+            if ext == 'jar':
+                command = 'java -jar Bots/' + fn
+        
+            self.server.workers.addBot(command, botname, password)
+           
+        self.send_head()
+        html = self.header("File Uploaded")
+        html += message + """
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_register(self, match):
+        #TODO add client side check for each of the fields
+        html = self.header("Register")
+        html += """
+        <form enctype="multipart/form-data" action="/registering" method="post">
+        <p>Username: <input type="text" name="username"></p>
+        <p>Password: <input type="password" name="password"></p>
+        <p>First Name: <input type="text" name="fname"></p>
+        <p>Last Name: <input type="text" name="lname"></p>
+        <p><input type="submit" value="Register"></p>
+        </form>
+        </body></html>
+        """
+
+        #self.server.db.add_user('username', 'password', 'fname', 'lname')
+        self.wfile.write(html)
+
+    def serve_registering(self, match):
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        username = form.getfirst("username","")
+        password = form.getfirst("password","")
+        fname = form.getfirst("fname","")
+        lname = form.getfirst("lname","")
+        message = ""
+
+        if username and password and fname and lname:
+            #all fields are filled
+            usercheck = self.server.db.check_username(username)
+            log.info("usercheck:  %s" % usercheck)
+
+            if usercheck:
+                log.info("Registering user: %s" % username)
+                self.server.db.add_user(username, password, fname, lname)
+                message = "User: %s successfully registered" % username
+
+            else:
+                message = "The username %s is not available. Please choose another name." % username
+        else:
+            message = "Please fill out all the fields"
+
+        html = self.header("Registration")
+        html += message + """
+        </body></html>
+        """
+        self.wfile.write(html)
+
+
+    def serve_login(self, match):
+        #TODO add client side check for each of the fields
+        html = self.header("Login")
+        html += """
+        <form enctype="multipart/form-data" action="/registering" method="post">
+        <p>Username: <input type="text" name="username"></p>
+        <p>Password: <input type="password" name="password"></p>
+        <p><input type="submit" value="Login"></p>
+        </form>
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_loginproc(self, match):
+        pass
+
+    def serve_admin(self,match):
+        pass
+
 
     def do_GET(self):
 
@@ -507,6 +638,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/ranking', self.serve_ranking),
                 ('^\/howto', self.serve_howto),
                 ('^\/maps', self.serve_maps),
+                ('^\/upload', self.serve_upload),
+                ('^\/register', self.serve_register),
+                ('^\/login', self.serve_login),
+                ('^\/admin', self.serve_admin),
                 ('^\/map(\/.*)', self.serve_map),
                 ('^\/player\/(.*)', self.serve_player),
                 ('^\/replay\.([0-9]+)', self.serve_visualizer),
@@ -519,8 +654,21 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 return
         self.send_error(404, 'File Not Found: %s' % self.path)
 
+    def do_POST(self):
+        if self.path == '/':
+            self.serve_main(None)
+            return
 
-
+        for regex, func in (
+                ('^\/uploading', self.serve_uploading),
+                ('^\/registering', self.serve_registering),
+                ('^\/loginproc', self.serve_loginproc),
+                ):
+            match = re.search(regex, self.path)
+            if match:
+                func(match)
+                return
+        self.send_error(404, 'File Not Found: %s' % self.path)
 
 
 def main(web_port, root_folder = ''):
@@ -552,5 +700,3 @@ if __name__ == "__main__":
         main(int(sys.argv[1]))
     else:
         main(2080)
-
-

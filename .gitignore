@@ -33,3 +33,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# database
+.sqlite3
+
+# bot folder
+Bots/

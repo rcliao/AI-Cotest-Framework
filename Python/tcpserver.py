@@ -493,6 +493,7 @@ class TCPGameServer(object):
             try:
                 for s in inputready:
                     if s == self.server:
+                        # find the client connected to server
                         client, address = self.server.accept()
                         data = client.recv(4096).strip()
                         data = data.split(" ")
