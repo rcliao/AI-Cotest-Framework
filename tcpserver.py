@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#!/usr/bin/env python
 
 import select
 #~ import signal
@@ -12,12 +15,10 @@ import threading
 import trueskill
 import subprocess
 
-from math import ceil, sqrt
 from time import time,sleep
 import json
 
-from time import time,asctime
-import datetime
+from time import time
 
 from ants import Ants
 from engine import run_game

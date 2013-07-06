@@ -1,4 +1,5 @@
-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Normal gaussian functions
 """
@@ -67,8 +68,3 @@ def invcdf(x):
         def f(y):
             return cdf(y) - x
         return newtons_method(f, pdf, 0.0)
-    
-        
-        
-
-    

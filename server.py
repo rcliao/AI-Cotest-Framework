@@ -1,10 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # A service that starts everything else, and make connection between server and
 # worker easier instead of relying on the socket connection
 
-import tcpserver
 import webserverG2
 import threading
-import signal
 import worker
 
 class WebThread(threading.Thread):
@@ -26,7 +27,6 @@ class WorkerThread(threading.Thread):
         worker.addBot(cmd, botname, password)
 
 if __name__ == '__main__':
-
     try:
         workers = WorkerThread()
         workers.start()

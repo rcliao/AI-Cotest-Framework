@@ -1,16 +1,14 @@
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import re
-import threading
 import logging
 import json
-import random
-import time
 import SimpleHTTPServer
 import socket
 import cgi
 
-import urllib
 import urlparse
 
 import game_db
