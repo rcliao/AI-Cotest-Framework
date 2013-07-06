@@ -1,13 +1,16 @@
 #!/usr/bin/env python
-from random import randrange, choice, shuffle, randint, seed, random
-from math import sqrt
-from collections import deque, defaultdict
+# -*- coding: utf-8 -*-
 
-from fractions import Fraction
-import operator
-import string
-from game import Game
+from collections import deque, defaultdict
 from copy import deepcopy
+from fractions import Fraction
+from math import sqrt
+import operator
+from random import randrange, choice, shuffle, randint, seed, random
+import string
+
+from game import Game
+
 try:
     from sys import maxint
 except ImportError:

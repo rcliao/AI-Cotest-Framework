@@ -1,17 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#!/usr/bin/env python
 #~ from __future__ import print_function
 import time
 import traceback
-import os
 import random
 import sys
 import json
-import io
 if sys.version_info >= (3,):
     def unicode(s):
         return s
 
-import logging
 
 #~ from sandbox import get_sandbox
 #~ from tcpserver import get_sandbox

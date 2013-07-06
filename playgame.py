@@ -1,11 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#!/usr/bin/env python
 from __future__ import print_function
 import traceback
 import sys
 import os
-import time
 from optparse import OptionParser, OptionGroup
-import random
 import cProfile
 import visualizer.visualize_locally
 import json

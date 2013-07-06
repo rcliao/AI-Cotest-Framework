@@ -1,13 +1,14 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-import time
-import sys
-import threading
-import re
-import string
+#!/usr/bin/env python
+
 import random
-import subprocess
 from socket import socket, AF_INET, SOCK_STREAM
+import string
+import subprocess
+import sys
+import time
 
 
 USAGE="""

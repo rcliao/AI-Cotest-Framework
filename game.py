@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 
 # Games used by the engine should implement the following methods
 class Game:
@@ -34,7 +36,7 @@ class Game:
         pass
 
     # returns if the game is over due to a win condition
-    def game_over(self): # returns boolean
+    def game_over(self):  # returns boolean
         pass
 
     # used by engine to get the current game state for the streaming format
@@ -50,7 +52,8 @@ class Game:
     def get_player_state(self, player):
         pass
 
-    # process a single player's moves, may be appropriate to resolve during finish turn
+    # process a single player's moves, may be appropriate to
+    # resolve during finish turn
     def do_moves(self, player, moves):
         # returns valid, ignored, invalid
         #         [''],  [('','')], [('','')]
@@ -66,7 +69,7 @@ class Game:
     # can be used to determine fairness of game and other stuff for visualizers
     def get_stats(self):
         pass
-    
+
     # used for getting a compact replay of the game
     def get_replay(self):
         pass
