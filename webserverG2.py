@@ -9,6 +9,7 @@ import time
 import SimpleHTTPServer
 import socket
 import cgi
+import Cookie
 
 import urllib
 import urlparse
@@ -30,6 +31,8 @@ log.setLevel(logging.DEBUG)
 # add ch to logger
 log.addHandler(ch)
 
+# TODO: maybe creating another stylesheet file would be easier for our life ...
+#   Instead of this static css file throughout the website
 style = """
     a{
         text-decoration: none;
@@ -82,9 +85,6 @@ style = """
         border: 1px solid #ebb81f;
         margin: 10px;
         padding: 5px;
-        vertical-align:middle;
-        position:relative;
-        top:-50%;
     }
     hr {
         color:#111;
@@ -197,17 +197,31 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <div id="headerIMG">
         <img src="/data/img/header4ants.jpg">
         </div>
-        <div id="wrapper"><div id = "headerwrap">
-        <a href='/login' name=top> Login </a> | 
-        <a href='/register' name=top> Register </a>
+        <div id="wrapper">
+        <div id = "headerwrap">
+        """
+        if (self.check_auth()):
+            head += """
+            <a href="/logout">Hi, """ + self.username + """ logout here!</a>
+            """
+        else:
+            head += """<a href='/login' name=top> Login </a> | 
+            <a href='/register' name=top> Register </a>"""
+
+        head += """
         <div id="header">
-        <a href='/' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/' name=top><img src="data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/ranking'><img src="data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/maps'><img src="data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/upload' title='Upload your bot'><img src="data/img/uploadIco.png"/> Upload Bot </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/admin' title='Admin'> Admin </a>
-        </div></div>
+        <a href='/' name=top><img src="/data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/' name=top><img src="/data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/ranking'><img src="/data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/maps'><img src="/data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        """
+        if (self.check_auth()):
+            head += """
+            <a href='/user/""" + self.username + """' title='Profile'> Profile </a>
+            """
+        head += """
+        </div>
+        </div>
         <br><p></b>
         """
         return head
@@ -310,6 +324,27 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "</tr>\n"
         return html
 
+    def bots_head(self):
+        return """<table id='players' class='tablesorter' width='98%'>
+            <thead><tr><th>Rank</th><th>Bot Name</th><th>Status</th><th>Operation</th></tr></thead>"""
+
+    def bots_line( self, p ):
+        html = "<tr>"
+        #Bot Rank
+        html += "<td>%d</td>"    % p[4]
+        #Bot Name
+        html += "<td><a href='/player/" + str(p[1]) + "'><b>"+str(p[1])+"</b></a></td>"
+        html += "<td>%s</td>"    % p[9]
+        html += "<td>\
+                <form enctype='multipart/form-data' action='/uploading' method='post'>\
+                <input type='file'  name='file'><input type='submit' name='Upload' value='Upload'>\
+                <input type='submit' name='Terminate' value='Terminate'>\
+                <input type='submit' name='Start' value='Start'></td>\
+                <input type='hidden' name='botname' value=" + str(p[1]) + "/>\
+                </form>"
+        html += "</tr>\n"
+        return html
+
     def serve_howto(self, match):
         html = self.header( "HowTo" )
         html += """
@@ -329,8 +364,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += self.footer()
         html += "</body></html>"
         self.wfile.write(html)
-        #self.server.db.add_player('nameadd', 'pw')
-        #self.server.db.delete_player('nameadd')
 
     def serve_maps(self, match):
         html = self.header( "%d maps" % len(self.server.maps) )
@@ -366,6 +399,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def serve_player(self, match):
+        # get player name using match(Regex)
         player = match.group(0).split("/")[2]
         res = self.server.db.get_player((player,))
         if len(res)< 1:
@@ -499,18 +533,23 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.wfile.write(self.server.cache[fname] )
 
     def serve_upload(self, match):
-        self.send_head()
-        # create the html page for uploading file using the same header
-        html = self.header("Upload File Here")
-        html += """
-        <form enctype="multipart/form-data" action="/uploading" method="post">
-        <p>Password: <input type="text" name="password"></p>
-        <p>File: <input type="file" name="file"></p>
-        <p><input type="submit" value="Upload"></p>
-        </form>
-        </body></html>
-        """
-        self.wfile.write(html)
+        if self.check_auth():
+            # create the html page for uploading file using the same header
+            html = self.header("Upload File Here")
+            html += """
+            <form enctype="multipart/form-data" action="/uploading" method="post">
+            <p>Password: <input type="text" name="password"></p>
+            <p>File: <input type="file" name="file"></p>
+            <p><input type="submit" value="Upload"></p>
+            </form>
+            </body></html>
+            """
+            self.wfile.write(html)
+        else:
+            # code 301 for redirect
+            self.send_response(301)
+            self.send_header("Location", "login")
+            self.end_headers()
 
     def serve_uploading(self, match):
         # get the form data from the post request
@@ -523,36 +562,54 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         # A nested FieldStorage instance holds the file
         fileitem = form['file']
-        password = form['password']
+        password = form.getfirst('password', '')
+        username = form.getfirst('username', '')
+        botname = form.getfirst('botname', '')
 
-        # Test if the file was uploaded
-        if fileitem.filename:
-           
-           # strip leading path from file name to avoid directory traversal attacks
-           fn = os.path.basename(fileitem.filename)
-           # upload the bot under /Bots/ Folder as it is
-           open('Bots/' + fn, 'wb').write(fileitem.file.read())
-           message = 'The file "' + fn + '" was uploaded successfully'
-           
-        else:
-           message = 'No file was uploaded'
-
-        # Automatically execute the bot as tcpclient
-        if fn:
-            # init the filename, filepath to create command differently for each extension
-            botname,sep,ext = fn.rpartition('.')
-
-            if ext == 'jar':
-                command = 'java -jar Bots/' + fn
         
-            self.server.workers.addBot(command, botname, password)
-           
-        self.send_head()
-        html = self.header("File Uploaded")
-        html += message + """
-        </body></html>
-        """
-        self.wfile.write(html)
+        if "Upload" in form:
+            # Test if the file was uploaded
+            if fileitem.filename:
+               
+               # strip leading path from file name to avoid directory traversal attacks
+               fn = os.path.basename(fileitem.filename)
+               # upload the bot under /Bots/ Folder as it is
+               open('Bots/' + fn, 'wb').write(fileitem.file.read())
+               message = 'The file "' + fn + '" was uploaded successfully'
+               
+            else:
+               message = 'No file was uploaded'
+
+            # Automatically execute the bot as tcpclient
+            if fn:
+                # init the filename, filepath to create command differently for each extension
+                botname,sep,ext = fn.rpartition('.')
+
+                if ext == 'jar':
+                    command = 'java -jar Bots/' + fn
+                    language = 'java'
+            
+                self.server.workers.addBot(command, botname, password)
+
+                # TODO: change to add bot including username later
+                # self.server.db.add_bot( username, botname, password, language )
+               
+            self.send_head()
+            html = self.header("File Uploaded")
+            html += message + """
+            </body></html>
+            """
+            self.wfile.write(html)
+        elif "Terminate" in form:
+            # terminate bot
+            # self.server.db.terminate_bot( botname )
+            print 'Terminate Bot' + botname
+            pass
+        elif "Start" in form:
+            # start bot
+            # self.server.db.start_bot( botname )
+            print 'Start Bot' + botname
+            pass
 
     def serve_register(self, match):
         #TODO add client side check for each of the fields
@@ -586,7 +643,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         message = ""
 
         if username and password and fname and lname:
-            #all fields are filled
+            # all fields are required
             usercheck = self.server.db.check_username(username)
             log.info("usercheck:  %s" % usercheck)
 
@@ -606,25 +663,184 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         self.wfile.write(html)
 
-
     def serve_login(self, match):
-        #TODO add client side check for each of the fields
-        html = self.header("Login")
+        if self.check_auth():
+            # if user is already login, he doesnt need to login again
+            self.send_response(301)
+            self.send_header("Location", '/')
+            self.end_headers()
+        else:
+            #TODO add client side check for each of the fields
+            html = self.header("Login")
+            html += """
+            <form enctype="multipart/form-data" action="/auth" method="post">
+            <p>Username: <input type="text" name="username"></p>
+            <p>Password: <input type="password" name="password"></p>
+            <p><input type="submit" value="Login"></p>
+            </form>
+            </body></html>
+            """
+            self.wfile.write(html)
+
+    def serve_auth(self, match):
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        # Instantiate a SimpleCookie object
+        cookie = Cookie.SimpleCookie()
+
+        username = form.getfirst("username","")
+        password = form.getfirst("password","")
+        message = ""
+
+        # code 301 for redirect
+        self.send_response(301)
+
+        if username and password:
+            # all fields are required
+            usercheck = self.server.db.authenticate_user(username, password)
+
+            if usercheck:
+                # The SimpleCookie instance is a mapping username to username
+                cookie['username'] = username
+                self.send_header('Set-Cookie', cookie.output(header=''))
+                # redirect back to home page
+                self.send_header("Location", '/')
+                self.end_headers()
+
+            else:
+                message = "User logged in failed, forgot username or password?"
+                self.end_headers()
+                self.wfile.write("No username ?")
+        else:
+            message = "Please fill out all the fields"
+
+    def serve_logout(self, match):
+        # change the cookie['username'] to guest to indicate this user logged out
+        cookie = Cookie.SimpleCookie()
+
+        self.send_response(200)
+
+        # if user decide to logout, set username back to guest
+        cookie['username'] = 'guest'
+        self.send_header('Set-Cookie', cookie.output(header=''))
+        # redirect back to home page
+        self.end_headers()
+
+        # dummy way of creating a response
+        html = """<html><head>
+        <!--link rel="icon" href='/favicon.ico'-->
+        <title>User Authentication</title>
+        <style>"""  + style + """</style>"""
+        if str(self.server.opts['sort'])=='True':
+            html += """
+                <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+                <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
+                <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+                """
+        html += """</head><body><b>
+        <div id="headerIMG">
+        <img src="/data/img/header4ants.jpg">
+        </div>
+        <div id="wrapper">
+        <div id = "headerwrap">
+        """
+        if (self.check_auth()):
+            html += """
+            <a href="/logout">Hi, """ + self.username + """ logout here!</a>
+            """
+        else:
+            html += """<a href='/login' name=top> Login </a> | 
+            <a href='/register' name=top> Register </a>"""
+
         html += """
-        <form enctype="multipart/form-data" action="/registering" method="post">
-        <p>Username: <input type="text" name="username"></p>
-        <p>Password: <input type="password" name="password"></p>
-        <p><input type="submit" value="Login"></p>
-        </form>
+        <div id="header">
+        <a href='/' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/' name=top><img src="data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/ranking'><img src="data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/maps'><img src="data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/upload' title='Upload your bot'><img src="data/img/uploadIco.png"/> Upload Bot </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/admin' title='Admin'> Admin </a>
+        </div>
+        </div>
+        <br><p></b>
+        """
+        html += """
+        User has logg out.
         </body></html>
         """
         self.wfile.write(html)
 
-    def serve_loginproc(self, match):
-        pass
+    def check_auth(self):
+        # an utility function to check if user is logged or not
+        cookie = Cookie.SimpleCookie()
+
+        if "Cookie" in self.headers:
+            cookie = Cookie.SimpleCookie(self.headers["Cookie"])
+
+        # if the user has no session, redirect this user to login page
+        if (not cookie):
+            log.info('no cookies in header')
+            return False
+        else:
+            if (not cookie['username'].value or str(cookie['username'].value) == 'guest'):
+                return False
+            else:
+                self.username = str(cookie['username'].value)
+                return True
 
     def serve_admin(self,match):
         pass
+
+    def serve_user(self, match):
+        # get player name using match(Regex)
+        user = match.group(0).split("/")[2]
+        
+        html = self.header( user )
+
+        # TODO: get all bots under this user
+        # self.user_bots = db.get_bots( user )
+
+        html += 'Hello ' + user + '</br>'
+
+        # dummy way of init bot as empty list
+        # TODO: remove this later once got DB working
+        self.user_bots = self.server.db.get_player(('EricDummyBot',))
+
+        if len(self.user_bots) >= 1:
+            html += '<p>Your bot(s) are as follow: </p>'
+            # case if user already has bot(s) running
+            # show all the bot rank table
+            for bot in self.user_bots:
+                html += self.bots_head()
+                html += "<tbody>"
+                html += self.bots_line( bot )
+                html += "</tbody></table>"
+
+        # note: there is a hidden field include the username field
+        html += "<hr>"
+        html += "Upload your new bot here </br>"
+        html += """
+        <form enctype="multipart/form-data" action="/uploading" method="post">
+        <p>Password: <input type="password" name="password"></p>
+        <p>Bot: <input type="file" name="file"></p>
+        <p><input type="submit" value="Upload" name="Upload"></p>
+        <input type="hidden" name="username" value=""" + user + """/>
+        </form>
+        </body></html>
+        """
+
+        # TODO: create/join tournament form
+
+        # Testing purpose i'm getting username of my own bot
+
+        html += "</body></html>"
+        
+        self.wfile.write(html)
 
 
     def do_GET(self):
@@ -638,12 +854,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/ranking', self.serve_ranking),
                 ('^\/howto', self.serve_howto),
                 ('^\/maps', self.serve_maps),
-                ('^\/upload', self.serve_upload),
                 ('^\/register', self.serve_register),
                 ('^\/login', self.serve_login),
+                ('^\/logout', self.serve_logout),
                 ('^\/admin', self.serve_admin),
                 ('^\/map(\/.*)', self.serve_map),
                 ('^\/player\/(.*)', self.serve_player),
+                ('^\/user\/(.*)', self.serve_user),
                 ('^\/replay\.([0-9]+)', self.serve_visualizer),
                 ('^\/p([0-9]?)', self.serve_main),
                 ('^\/?(.*)', self.serve_file),
@@ -662,7 +879,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         for regex, func in (
                 ('^\/uploading', self.serve_uploading),
                 ('^\/registering', self.serve_registering),
-                ('^\/loginproc', self.serve_loginproc),
+                ('^\/auth', self.serve_auth),
                 ):
             match = re.search(regex, self.path)
             if match:
@@ -671,7 +888,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.send_error(404, 'File Not Found: %s' % self.path)
 
 
-def main(web_port, root_folder = ''):
+def main(web_port, workers, root_folder = ''):
 
     opts = {
         ## web opts:
@@ -683,6 +900,7 @@ def main(web_port, root_folder = ''):
 
 
     web = AntsHttpServer(('', web_port), AntsHttpHandler)
+    web.workers = workers
     web.opts = opts
     web.serve_forever()
 
