@@ -39,7 +39,6 @@ log.setLevel(logging.INFO)
 # add ch to logger
 log.addHandler(ch)
 
-
 BUFSIZ = 4096
 
 MAP_PLAYERS_INDEX = 0
@@ -70,9 +69,6 @@ def load_map_info():
             maps[file] = [p,r,c,0]
     return maps
 
-
-
-
 #
 ## sandbox impl
 #
@@ -82,15 +78,13 @@ class TcpBox(threading.Thread):
         self.sock = sock
         self.inp_lines = []
 
-        #dbg stuff
+        #db stuff
         self.name =""
         self.game_id=0
 
-        # start thread
         self.start()
 
     def __del__(self):
-        #~ print "__del__", self.game_id, self.name, self
         try:
             book.players.remove( self.name )
         except: pass
@@ -116,15 +110,6 @@ class TcpBox(threading.Thread):
             if line:
                 self.inp_lines.append(line)
 
-    ## next 2 are commented out to avoid interference with the thread interface
-    #~ @property
-    #~ def is_alive(self):
-        #~ return self.sock != None
-
-    #~ def start(self, shell_command):
-        #~ print "Thread start", self
-        #~ pass
-
     def _close(self):
         try:
             self.sock.close()
@@ -133,7 +118,6 @@ class TcpBox(threading.Thread):
 
     def kill(self):
         try:
-            ## you died of dysentry
             self.write("end\nyou timed out.\n\n")
         except: pass
 
@@ -144,7 +128,6 @@ class TcpBox(threading.Thread):
         try:
             self.sock.sendall(str)
         except Exception, e:
-            #~ log.warning("writing to invalid socket %s  game:%d [%s]" % (self.name,self.game_id,str.replace('\n','')) )
             pass
 
     def write_line(self, line):
@@ -156,7 +139,6 @@ class TcpBox(threading.Thread):
         line = self.inp_lines[0]
         self.inp_lines = self.inp_lines[1:]
         return line
-
 
     ## dummies
     def release(self):
@@ -170,13 +152,6 @@ class TcpBox(threading.Thread):
 
     def read_error(self, timeout=0):
         return None
-
-    ## never used
-    #~ def retrieve(self):
-        #~ print "Thread ertriev", self
-        #~ pass
-
-
 
 
 class TcpGame(threading.Thread):
@@ -192,7 +167,6 @@ class TcpGame(threading.Thread):
         self.ants = Ants(opts)
 
     def __del__(self):
-        #~ print "__del__", self.id, self
         try:
             book.games.remove(self.id)
         except: pass
@@ -206,12 +180,11 @@ class TcpGame(threading.Thread):
         for i,p in enumerate(self.bots):
             p.write( "INFO: game " + str(self.id) + " " + str(self.map_name) + " : " + str(self.players) + "\n" )
 
-        # finally, THE GAME !
         game_result = run_game(self.ants, self.bots, self.opts)
 
         try:
             states = game_result["status"]
-        except: # keyerror
+        except:
             log.error("broken game %d: %s" % (self.id,game_result) )
             return
         if self.ants.turn < 1:
@@ -269,8 +242,6 @@ class TcpGame(threading.Thread):
         log.info("ranks  : %s   %s draws" % (ranks, draws) )
         log.info("scores : %s" % scores)
         log.info("status : %s" % states)
-
-
 
 
     def calc_ranks_py( self, players, ranks, db ):

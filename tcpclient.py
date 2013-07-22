@@ -63,7 +63,6 @@ def tcp(host, port, bot_command, user, password, options):
         bot = subprocess.Popen(bot_command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            shell=(os.name == "posix"),
             cwd=".")
     except:
         print( 'your bot ('+str(bot_command)+') failed to start!' )

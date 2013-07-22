@@ -11,7 +11,8 @@ from socket import socket, AF_INET, SOCK_STREAM
 import tcpclient
 
 def addBot(cmd, botname, password):
-	botClient(cmd, botname, password).start()
+	newProcess = botClient(cmd, botname, password)
+	newProcess.start()
 
 class botClient(threading.Thread):
 	def __init__(self, cmd, botname, password):

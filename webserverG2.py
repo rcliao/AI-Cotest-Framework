@@ -326,12 +326,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def bots_head(self):
         return """<table id='players' class='tablesorter' width='98%'>
-            <thead><tr><th>Rank</th><th>Bot Name</th><th>Status</th><th>Operation</th></tr></thead>"""
+            <thead><tr><th>Bot Name</th><th>Status</th><th>Operation</th></tr></thead>"""
 
     def bots_line( self, p ):
         html = "<tr>"
-        #Bot Rank
-        html += "<td>%d</td>"    % p[4]
         #Bot Name
         html += "<td><a href='/player/" + str(p[1]) + "'><b>"+str(p[1])+"</b></a></td>"
         html += "<td>%s</td>"    % p[9]
@@ -804,8 +802,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         # TODO: get all bots under this user
         # self.user_bots = db.get_bots( user )
-
-        html += 'Hello ' + user + '</br>'
 
         # dummy way of init bot as empty list
         # TODO: remove this later once got DB working

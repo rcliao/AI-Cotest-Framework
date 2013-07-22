@@ -16,38 +16,85 @@ class GameDB():
 			self.con.close()
 		except: pass
 		
-	def recreate(self):
+	def recreate( self ):
 		cur = self.con.cursor()		
 		try:
-			#~ cur.execute("create table opts ( turns integer default 1000, loadtime integer default 5000, turntime integer default 5000, trueskill text default 'py' );")
-			
-			#### Gameindex ####
-			cur.execute("create table gameindex(id integer primary key autoincrement, player text, gameid integer)")
-
-			#### Games ####
-			cur.execute("create table games(id integer, players text, map text, datum date, turns integer default 0, draws integer default 0)")
-
-			#### Players ####
-			#TODO deprecated
-			cur.execute("create table players(id integer primary key autoincrement, name text unique, password text, lastseen date, rank integer default 1000, skill real default 0.0, mu real default 50.0, sigma real default 13.3,ngames integer default 0, status bit default 1)")
-
-			#### Tournaments ####
-			cur.execute("create table tournaments(id integer primary key autoincrement, name text unique, owner_id text, password text, started date, ends date)")
-
-			#### Bots ####
-			cur.execute("create table bots(id integer primary key autoincrement, name text unique, language text, owner text)")
-
-			#### Bots_tournament ####
-			cur.execute("create table bots_tournament(id integer primary key autoincrement, name text, tournament_name text, lastseen date, rank integer default 1000, skill real default 0.0, mu real default 50.0, sigma real default 13.3,ngames integer default 0, status bit default 1 )")
 
 			#### Users ####
-			cur.execute("create table users(id integer primary key autoincrement, name text unique, password text, firstname text, lastname text)")
+			cur.execute("create table \
+				Users(\
+					id INTEGER PRIMARY KEY AUTOINCREMENT,\
+					name TEXT UNIQUE,\
+					password TEXT,\
+					email TEXT\
+				)")
+
+			#### Bots ####
+			cur.execute("create table \
+				Bots(\
+					id INTEGER PRIMARY KEY AUTOINCREMENT,\
+					name TEXT UNIQUE,\
+					language TEXT,\
+					owner_id TEXT\
+				)")
+
+			#### Tournaments ####
+			cur.execute("create table \
+				Tournaments(\
+					id INTEGER PRIMARY KEY AUTOINCREMENT,\
+					name TEXT UNIQUE,\
+					owner_id TEXT,\
+					password TEXT,\
+					started DATE,\
+					ends DATE\
+				)")
+
+			#### Gameindex ####
+			cur.execute("create table \
+				Tourn_GameIndex(\
+					id INTEGER PRIMARY KEY AUTOINCREMENT,\
+					player TEXT,\
+					gameid INTEGER\
+				)")
+
+			#### Games ####
+			cur.execute("create table \
+				Tourn_Games(\
+					id INTEGER,\
+					players TEXT,\
+					map TEXT,\
+					datum DATE,\
+					turns INTEGER DEFAULT 0,\
+					draws INTEGER DEFAULT 0\
+				)")
+
+			#### Bots_tournament ####
+			cur.execute("create table \
+				Tourn_Entries(\
+					id INTEGER PRIMARY KEY AUTOINCREMENT,\
+					name TEXT,\
+					tournament_name TEXT,\
+					lastseen DATE,\
+					rank INTEGER DEFAULT 1000,\
+					skill real DEFAULT 0.0,\
+					mu real DEFAULT 50.0,\
+					sigma real DEFAULT 13.3,\
+					ngames INTEGER DEFAULT 0,\
+					status bit DEFAULT 1\
+				)")
 
 			#### Replays ####
-			cur.execute("create table replays(id integer, json blob)")
+			cur.execute("create table \
+				Tourn_Replays(\
+					id INTEGER, \
+					json BLOB\
+				)")
 
 			#### Kill_client ####
-			cur.execute("create table kill_client(name text unique)")
+			cur.execute("create table \
+				kill_client(\
+					name TEXT UNIQUE\
+				)")
 			self.con.commit()
 		except:
 			pass
