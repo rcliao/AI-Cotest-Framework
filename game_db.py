@@ -9,7 +9,7 @@ import os
 class GameDB():
 	
 	def __init__( self, file="antsdb.sqlite3" ):
-		db_is_new = not os.path.exists(file)
+		self.db_is_new = not os.path.exists(file)
 		self.con = sqlite3.connect(file)
 		self.recreate()
 		
@@ -101,16 +101,10 @@ class GameDB():
 					name TEXT UNIQUE\
 				)")
 
-			if db_is_new:
-				cur.execute("insert into Users \
-					(id, name, password, email) \
-					values (None, admin, cs460Ant, rcliao01@gmail.com)")
-				cur.execute("insert into Trounaments \
-					(id, creator_id, name, password, start_date, end_date) \
-					values (None, 1, 'Main Tournaments', \
-						datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S'), \
-						datetime.MAXYEAR.strftime('%d.%m.%Y %H:%M:%S'))\
-					")
+			if self.db_is_new:
+				self.update("insert into Users values(?, ?, ?, ?)", (None, 'admin', 'cs460Ant', 'rcliao01@gmail.com'))
+				self.update("insert into Tournaments values(?, ?, ?, ?, ? ,?)", (None, 1, 'Main Tournaments', None,	self.now(), self.now()))
+				self.con.commit()
 
 			self.con.commit()
 		except:
