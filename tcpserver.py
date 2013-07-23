@@ -210,13 +210,16 @@ class TcpGame(threading.Thread):
         # save to db
         db = game_db.GameDB()
         data = json.dumps(game_result)
-        db.add_replay( self.id, data )
+
+        # TODO change this to fit the tournament id
+        db.add_replay( 1, self.id, data )
 
         plr = {}
         for i,p in enumerate(self.players):
             plr[p] = (scores[i], states[i])
-            db.update("insert into gameindex values(?,?,?)",(None,p,self.id))
-        db.add_game( self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
+            # TOOD change this 1 to fit the tournament id
+            db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, 1, p, self.id))
+        db.add_game( self.id, 1, self.map_name, self.ants.turn, draws,json.dumps(plr) )
 
         # update trueskill
         #~ if sum(ranks) >= len(ranks)-1:
@@ -229,8 +232,8 @@ class TcpGame(threading.Thread):
 
         ## this should go out
         # update rankings
-        for i, p in enumerate(db.retrieve("select name from players order by skill desc",())):
-            db.update_player_rank( p[0], i+1 )
+        for i, p in enumerate(db.retrieve("select bot_id from Tourn_Enries where tourn_id=1 order by skill desc",())):
+            db.update_player_rank( 1, p[0], i+1 )
         db.con.commit()
 
         # dbg display
@@ -254,7 +257,7 @@ class TcpGame(threading.Thread):
 
         ts_players = []
         for i, p in enumerate(players):
-            pdata = db.get_player((p,))
+            pdata = db.get_player((1, p))
             ts_players.append( TrueSkillPlayer(i, (pdata[0][6],pdata[0][7]), ranks[i] ) )
 
         try:
@@ -267,7 +270,7 @@ class TcpGame(threading.Thread):
             mu    = ts_players[i].skill[0]
             sigma = ts_players[i].skill[1]
             skill = mu - sigma * 3
-            db.update_player_skill(p, skill, mu,sigma );
+            db.update_player_skill(1, p, skill, mu,sigma );
 
 
     def calk_ranks_js( self, players, ranks, db ):
@@ -282,7 +285,7 @@ class TcpGame(threading.Thread):
 
             lines = []
             for i,p in enumerate(players):
-                pdata = db.get_player((p,))
+                pdata = db.get_player( (1, p) )
                 lines.append("P %s %d %f %f\n" % (p, ranks[i], pdata[0][6], pdata[0][7]))
 
             for i,p in enumerate(players):
@@ -319,7 +322,7 @@ class TcpGame(threading.Thread):
             mu    = float(result[1].replace(",","."))
             sigma = float(result[2].replace(",","."))
             skill = mu -sigma * 3
-            db.update_player_skill( p, skill, mu, sigma )
+            db.update_player_skill( 1, p, skill, mu, sigma )
 
 
 
@@ -335,9 +338,9 @@ class TCPGameServer(object):
 
         self.bind()
 
-    def addplayer(self, game, name, password, sock):
+    def addplayer(self, game, name, language, sock):
         print("addplayer called")
-        p = self.db.get_player((name,))
+        p = self.db.get_player((1, name))
         if len(p)==1:
             pw = p[0][2]
             if pw != password:
@@ -349,7 +352,7 @@ class TCPGameServer(object):
                 return -1
         else:
             print("addplayer else case")
-            self.db.add_player(name, password)
+            self.db.add_bot(name, u_id, name, language)
 
         box = TcpBox(sock)
         box.name=name
@@ -441,7 +444,7 @@ class TCPGameServer(object):
         # have to create the game before collecting respective num of players:
         self.db = game_db.GameDB()
         self.kill_list = self.db.get_kill_client()
-        games = self.db.retrieve("select id from games order by id desc limit 1;",())
+        games = self.db.retrieve("select id from Tourn_Games where tourn_id=1 order by id desc limit 1;",())
         if len(games) > 0:
             self.latest = int(games[0][0])
         else:

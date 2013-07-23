@@ -39,7 +39,7 @@ def readline(sock):
 
 
 time_out = 1.0
-def tcp(host, port, bot_command, user, password, options):
+def tcp(host, port, bot_command, user, options):
     global time_out
     # spread out if in batch mode, to allow more random ordering on the server
     time.sleep(time_out + 5.0 * random.random())
@@ -55,7 +55,7 @@ def tcp(host, port, bot_command, user, password, options):
         return
 
     # send greetz
-    sock.sendall("USER %s %s\n" % (user, password) )
+    sock.sendall("USER %s %s\n" % (user) )
 
     # start bot
     try:
@@ -154,9 +154,9 @@ def check_string( pname, use ):
         return False
     return True
 
-def run_forever( host, port, botpath, pname, password ):
+def run_forever( host, port, botpath, pname ):
     while True:
-        tcp( host, port, botpath, pname, password, {} )
+        tcp( host, port, botpath, pname, {} )
 
 def main():
     if len(sys.argv) < 6:

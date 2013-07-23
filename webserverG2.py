@@ -244,7 +244,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_visualizer(self, match):
         try:
             junk,gid = match.group(0).split('.')
-            replaydata = self.server.db.get_replay(gid)
+            replaydata = self.server.db.get_replay( 1, gid )
         except Exception, e:
             self.send_error(500, '%s' % (e,))
             return
@@ -386,10 +386,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if match and (len(match.group(0))>2):
             offset=table_lines * int(match.group(0)[2:])
 
-        for g in self.server.db.get_games(offset,table_lines):
+        for g in self.server.db.get_games(1, offset,table_lines):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/", self.server.db.num_games() )
+        html += self.page_counter("/", self.server.db.num_games( 1 ) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</div></body></html>"
@@ -399,7 +399,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_player(self, match):
         # get player name using match(Regex)
         player = match.group(0).split("/")[2]
-        res = self.server.db.get_player((player,))
+        res = self.server.db.get_player((1, player))
         if len(res)< 1:
             self.send_error(404, 'Player Not Found: %s' % self.path)
             return
@@ -415,10 +415,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>3:
                 offset=table_lines * int(toks[3][1:])
-        for g in self.server.db.get_games_for_player(offset, table_lines, player):
+        for g in self.server.db.get_games_for_player(1, offset, table_lines, player):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/player/"+player+"/", self.server.db.num_games_for_player(player) )
+        html += self.page_counter("/player/"+player+"/", self.server.db.num_games_for_player(1, player) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</body></html>"
@@ -450,7 +450,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             html += self.rank_line( p )
 
         html += "</tbody></table>"
-        html += self.page_counter("/ranking/", self.server.db.num_players() )
+        html += self.page_counter("/ranking/", self.server.db.num_players( 1 ) )
         html += self.footer()
         html += self.footer_sort('players')
         html += self.path
@@ -590,7 +590,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.server.workers.addBot(command, botname, password)
 
                 # TODO: change to add bot including username later
-                # self.server.db.add_bot( username, botname, password, language )
+                self.server.db.add_bot( username, botname, language )
                
             self.send_head()
             html = self.header("File Uploaded")
@@ -616,14 +616,11 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <form enctype="multipart/form-data" action="/registering" method="post">
         <p>Username: <input type="text" name="username"></p>
         <p>Password: <input type="password" name="password"></p>
-        <p>First Name: <input type="text" name="fname"></p>
-        <p>Last Name: <input type="text" name="lname"></p>
+        <p>Email: <input type="text" name="email"></p>
         <p><input type="submit" value="Register"></p>
         </form>
         </body></html>
         """
-
-        #self.server.db.add_user('username', 'password', 'fname', 'lname')
         self.wfile.write(html)
 
     def serve_registering(self, match):
@@ -636,18 +633,17 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         username = form.getfirst("username","")
         password = form.getfirst("password","")
-        fname = form.getfirst("fname","")
-        lname = form.getfirst("lname","")
+        email = form.getfirst("email","")
         message = ""
 
-        if username and password and fname and lname:
+        if username and password and email:
             # all fields are required
             usercheck = self.server.db.check_username(username)
             log.info("usercheck:  %s" % usercheck)
 
             if usercheck:
                 log.info("Registering user: %s" % username)
-                self.server.db.add_user(username, password, fname, lname)
+                self.server.db.add_user(username, password, email)
                 message = "User: %s successfully registered" % username
 
             else:
@@ -700,7 +696,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         if username and password:
             # all fields are required
-            usercheck = self.server.db.authenticate_user(username, password)
+            usercheck = self.server.db.authenticate_user( username, password )
 
             if usercheck:
                 # The SimpleCookie instance is a mapping username to username
@@ -801,11 +797,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html = self.header( user )
 
         # TODO: get all bots under this user
-        # self.user_bots = db.get_bots( user )
 
         # dummy way of init bot as empty list
         # TODO: remove this later once got DB working
-        self.user_bots = self.server.db.get_player(('EricDummyBot',))
+        self.user_bots = self.server.db.get_bots((1, user))
 
         if len(self.user_bots) >= 1:
             html += '<p>Your bot(s) are as follow: </p>'
