@@ -219,7 +219,7 @@ class TcpGame(threading.Thread):
             plr[p] = (scores[i], states[i])
             # TOOD change this 1 to fit the tournament id
             db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, 1, p, self.id))
-        db.add_game( self.id, 1, self.map_name, self.ants.turn, draws,json.dumps(plr) )
+        db.add_game( 1, self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
 
         # update trueskill
         #~ if sum(ranks) >= len(ranks)-1:
@@ -232,7 +232,7 @@ class TcpGame(threading.Thread):
 
         ## this should go out
         # update rankings
-        for i, p in enumerate(db.retrieve("select bot_id from Tourn_Enries where tourn_id=1 order by skill desc",())):
+        for i, p in enumerate(db.retrieve("select bot_id from Tourn_Entries where tourn_id=1 order by skill desc",())):
             db.update_player_rank( 1, p[0], i+1 )
         db.con.commit()
 
@@ -285,7 +285,7 @@ class TcpGame(threading.Thread):
 
             lines = []
             for i,p in enumerate(players):
-                pdata = db.get_player( (1, p) )
+                pdata = db.get_player( 1, p )
                 lines.append("P %s %d %f %f\n" % (p, ranks[i], pdata[0][6], pdata[0][7]))
 
             for i,p in enumerate(players):
@@ -338,22 +338,7 @@ class TCPGameServer(object):
 
         self.bind()
 
-    def addplayer(self, game, name, language, sock):
-        print("addplayer called")
-        p = self.db.get_player((1, name))
-        if len(p)==1:
-            pw = p[0][2]
-            if pw != password:
-                log.warning("invalid password for %s : %s : %s" % (name, pw, password) )
-                sock.sendall("INFO: invalid password for %s : %s\n"% (name, password) )
-                sock.sendall("killbot")
-                ##sock.sendall("end\ngo\n")
-                sock.close()
-                return -1
-        else:
-            print("addplayer else case")
-            self.db.add_bot(name, u_id, name, language)
-
+    def addplayer(self, game, name, sock):
         box = TcpBox(sock)
         box.name=name
         box.game_id = game.id
@@ -420,14 +405,6 @@ class TCPGameServer(object):
         except:
             pass
 
-    #def kill_bot(self, botname = ""):
-    #    print("should be killing stuff")
-    #    for b in self.bots:
-    #        b.kill()
-
-    #Bots are removed by removing their entries from the database
-    #This checks if the connecting bot is in the database. If not it gets killed
-    #def check_bot_kill()
 
     def kill_client(self, client, message, dolog=True, name = ""):
         try:
@@ -472,7 +449,6 @@ class TCPGameServer(object):
                         data = client.recv(4096).strip()
                         data = data.split(" ")
                         name = data[1]
-                        password = data[2]
                         name_ok = True
                         
                         #it kinda works, but for loop needs to be redone
@@ -501,7 +477,8 @@ class TCPGameServer(object):
                             continue
 
                         # start game if enough players joined
-                        avail = self.addplayer( next_game, name, password, client )
+                        avail = self.addplayer( next_game, name, client )
+
                         if avail==-1:
                             continue
                         log.info('user %s connected to game %d (%d/%d)' % (name,next_game.id,avail,next_game.nplayers))

@@ -10,19 +10,17 @@ from socket import socket, AF_INET, SOCK_STREAM
 
 import tcpclient
 
-def addBot(cmd, botname, password):
-	newProcess = botClient(cmd, botname, password)
-	newProcess.start()
+def addBot(cmd, botname):
+	botClient(cmd, botname).start()
 
 class botClient(threading.Thread):
-	def __init__(self, cmd, botname, password):
+	def __init__(self, cmd, botname):
 		threading.Thread.__init__(self)
 		self.cmd = cmd
 		self.botname = botname
-		self.password = password
 
 	def run(self):
-		tcpclient.run_forever('localhost', 2081, self.cmd, self.botname, self.password)
+		tcpclient.run_forever('localhost', 2081, self.cmd, self.botname)
 
 
 def main():

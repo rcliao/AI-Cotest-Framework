@@ -286,11 +286,11 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def game_line(self, g):
         html = "<tr><td width=10%><a href='/replay." + str(g[0]) + "' title='Run in Visualizer'> Replay " + str(g[0]) + "</a></td><td>"
-        for key, value in sorted(json.loads(g[1]).iteritems(), key=lambda (k,v): (v,k), reverse=True):
+        for key, value in sorted(json.loads(g[2]).iteritems(), key=lambda (k,v): (v,k), reverse=True):
             html += "&nbsp;&nbsp;<a href='/player/" + str(key) + "' title='"+str(value[1])+"'>"+str(key)+"</a> (" + str(value[0]) + ") &nbsp;"
-        html += "</td><td>" + str(g[4]) + "</td>"
-        html += "</td><td>" + str(g[2]) + "</td>"
-        html += "<td><a href='/map/" + str(g[3]) + "' title='View the map'>" + str(g[3]) + "</a></td>"
+        html += "</td><td>" + str(g[5]) + "</td>"
+        html += "</td><td>" + str(g[3]) + "</td>"
+        html += "<td><a href='/map/" + str(g[4]) + "' title='View the map'>" + str(g[4]) + "</a></td>"
         html += "</tr>\n"
         return html
 
@@ -312,14 +312,14 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         #Bot Rank
         html += "<td>%d</td>"    % p[4]
         #Bot Name
-        html += "<td><a href='/player/" + str(p[1]) + "'><b>"+str(p[1])+"</b></a></td>"
+        html += "<td><a href='/player/" + str(p[2]) + "'><b>"+str(p[2])+"</b></a></td>"
         
         html += "<td>%2.4f</td>" % p[5]
         html += "<td>%2.4f</td>" % p[6]
         html += "<td>%2.4f</td>" % p[7]
         html += "<td>%d</td>"    % p[8]
         html += "<td>%s</td>"    % p[3]
-        html += "<td><a href='/ranking?%s'><b>delete</b></a></td>" % str("delete=" + p[1])
+        html += "<td><a href='/ranking?%s'><b>delete</b></a></td>" % str("delete=" + str(p[2]))
         html += "<td>%s</td>"    % p[9]
         html += "</tr>\n"
         return html
@@ -331,8 +331,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def bots_line( self, p ):
         html = "<tr>"
         #Bot Name
-        html += "<td><a href='/player/" + str(p[1]) + "'><b>"+str(p[1])+"</b></a></td>"
-        html += "<td>%s</td>"    % p[9]
+        html += "<td><a href='/player/" + str(p[2]) + "'><b>"+str(p[2])+"</b></a></td>"
+        html += "<td> TBI </td>"
         html += "<td>\
                 <form enctype='multipart/form-data' action='/uploading' method='post'>\
                 <input type='file'  name='file'><input type='submit' name='Upload' value='Upload'>\
@@ -399,7 +399,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_player(self, match):
         # get player name using match(Regex)
         player = match.group(0).split("/")[2]
-        res = self.server.db.get_player((1, player))
+        res = self.server.db.get_player(1, player)
         if len(res)< 1:
             self.send_error(404, 'Player Not Found: %s' % self.path)
             return
@@ -446,7 +446,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>2:
                 offset=table_lines * int(toks[2][1:])
-        for p in self.server.db.retrieve("select * from players order by skill desc limit ? offset ?",(table_lines,offset)):
+        for p in self.server.db.retrieve("select * from Tourn_Entries order by skill desc limit ? offset ?",(table_lines,offset)):
             html += self.rank_line( p )
 
         html += "</tbody></table>"
@@ -587,12 +587,16 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     command = 'java -jar Bots/' + fn
                     language = 'java'
             
-                self.server.workers.addBot(command, botname, password)
+                self.server.workers.addBot(command, botname)
 
-                # TODO: change to add bot including username later
-                self.server.db.add_bot( username, botname, language )
+                existingBot = self.server.db.get_bot( botname )
+
+                if not existingBot:
+                    # TODO: change to add bot including username later
+                    self.server.db.add_bot( username, botname, language )
+                    self.server.db.enroll_bot( 1, botname )
                
-            self.send_head()
+            
             html = self.header("File Uploaded")
             html += message + """
             </body></html>
@@ -800,7 +804,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         # dummy way of init bot as empty list
         # TODO: remove this later once got DB working
-        self.user_bots = self.server.db.get_bots((1, user))
+        self.user_bots = self.server.db.get_bots((user))
 
         if len(self.user_bots) >= 1:
             html += '<p>Your bot(s) are as follow: </p>'
@@ -817,10 +821,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "Upload your new bot here </br>"
         html += """
         <form enctype="multipart/form-data" action="/uploading" method="post">
-        <p>Password: <input type="password" name="password"></p>
         <p>Bot: <input type="file" name="file"></p>
         <p><input type="submit" value="Upload" name="Upload"></p>
-        <input type="hidden" name="username" value=""" + user + """/>
+        <input type="hidden" name="username" value=""" + user + """>
         </form>
         </body></html>
         """

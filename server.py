@@ -22,8 +22,8 @@ class WorkerThread(threading.Thread):
     def run(self):
         worker.main()
 
-    def addBot(self, cmd, botname, password):
-        worker.addBot(cmd, botname, password)
+    def addBot(self, cmd, botname):
+        worker.addBot(cmd, botname)
 
 if __name__ == '__main__':
 

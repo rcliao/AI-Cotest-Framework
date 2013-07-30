@@ -55,7 +55,7 @@ def tcp(host, port, bot_command, user, options):
         return
 
     # send greetz
-    sock.sendall("USER %s %s\n" % (user) )
+    sock.sendall("USER %s \n" % (user) )
 
     # start bot
     try:

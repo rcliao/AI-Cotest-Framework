@@ -159,6 +159,9 @@ class GameDB():
 	def get_bots( self, username ):
 		return self.retrieve("select * from Bots AS b INNER JOIN Users u on u.id=b.owner_id where u.name=?", (username, ))
 
+	def get_bot( self, botname ):
+		return self.retrieve("select * from Bots where name=?", (botname, ))
+
 	def authenticate_user( self, name, password ):
 		return self.retrieve("select id from Users where name=? AND password=?", (name, password))
 
@@ -188,7 +191,7 @@ class GameDB():
 		return self.retrieve("select lastseen from Tourn_Entries where tourn_id=? AND bot_id=?", (t_id, name))
 
 	def get_player( self, t_id, botname ):
-		sql = "select * from Tourn_Entries AS e INNER JOIN Bots AS b on e.bot_id=b.bot_id where e.tourn_id=? AND b.name=?"
+		sql = "select * from Tourn_Entries AS e INNER JOIN Bots AS b on e.bot_id=b.id where e.tourn_id=? AND b.name=?"
 		return self.retrieve( sql, (t_id, botname) )
 
 	#### WRITE ####
@@ -196,10 +199,10 @@ class GameDB():
 	def add_replay( self, t_id, id, txt ):
 		#~ data = txt
 		data = buffer(zlib.compress(txt))
-		self.update("insert into Tourn_Replays values(?,?)", (id, t_id, data) )
+		self.update("insert into Tourn_Replays values(?,?, ?)", (id, t_id, data) )
 		
 	def add_game( self, t_id, i, map, turns, draws, players ):
-		self.update("insert into Tourn_Games values(?,?,?,?,?,?)", (i, t_id, players, self.now(), map, turns, draws))
+		self.update("insert into Tourn_Games values(?, ?, ?, ?, ?, ?, ?)", (i, t_id, players, self.now(), map, turns, draws))
 		
 	def add_tournament( self, t_id, username, tournamentname, password =''):
 		self.update("insert into Tournaments values(?,?,?,?,?,?)", (None, tournamentname, username, password, self.now(), self.now()))
@@ -207,13 +210,14 @@ class GameDB():
 	def add_user( self, name, password, email ):
 		self.update("insert into Users values(?,?,?,?)", (None, name, password, email))
 
-	def enroll_bot( self, u_id, bot_id, t_id ):
-		self.update("insert into Tourn_Entries values(?,?,?,?)",
-			(None, t_id, b_id, self.now()))
+	def enroll_bot( self, t_id, bot_name ):
+		bot_id = self.retrieve("select id from Bots where name=?", (bot_name, ))
+		self.update("insert into Tourn_Entries values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			(None, t_id, bot_id[0][0], self.now(),1000,0.0,50.0,50.0/3.0,0,1))
 
 	def add_bot( self, username, botname, language ):
 		u_id = self.retrieve("select id from Users where name=?", (username, ))
-		self.update("insert into Bots values(?,?,?,?)", (None, u_id[0], botname, language))
+		self.update("insert into Bots values(?,?,?,?)", (None, u_id[0][0], botname, language) )
 
 	def terminate_bot( self, botname ):
 		self.update("insert into kill_client values('%s');" % botname)
@@ -225,15 +229,16 @@ class GameDB():
 		self.update("delete from kill_client where name = '%s';" % name)
 
 	def update_player_skill( self, t_id, botname, skill, mu, sig ):
-		self.update_defered("update Tourn_Entries as e INNER JOIN Bots as b set ngames=ngames+1, lastseen=?, skill=?, mu=?, sigma=? where e.tourn_id=? AND b.name=?",
-			(self.now(), skill, mu, sig, t_id, botname))
+		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
+		self.update_defered("update Tourn_Entries set ngames=ngames+1, lastseen=?, skill=?, mu=?, sigma=? where tourn_id=? AND bot_id=?",
+			(self.now(), skill, mu, sig, t_id, bot_id[0][0]))
 
 	def update_player_status( self, t_id, bot_id, status ):
 		self.update_defered("update Tourn_Entries set status=? where tourn_id=? bot_id=?", (status, t_id, bot_id))
 
 	## needs a final commit() 
 	def update_player_rank( self, t_id, bot_id, rank ):
-		self.update_defered("update Tourn_entries set rank=? where tourn_id=? bot_id=?", (rank, t_id, bot_id))
+		self.update_defered("update Tourn_entries set rank=? where tourn_id=? AND bot_id=?", (rank, t_id, bot_id))
 		
 	#~ def get_opts( self, opts ):
 		#~ r = self.retrieve( "select * from opts" )
