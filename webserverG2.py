@@ -328,17 +328,21 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return """<table id='players' class='tablesorter' width='98%'>
             <thead><tr><th>Bot Name</th><th>Status</th><th>Operation</th></tr></thead>"""
 
-    def bots_line( self, p ):
+    def bots_line( self, p, username ):
         html = "<tr>"
         #Bot Name
-        html += "<td><a href='/player/" + str(p[2]) + "'><b>"+str(p[2])+"</b></a></td>"
-        html += "<td> TBI </td>"
+        html += "<td><a href='/player/" + str(p[0]) + "'><b>"+str(p[0])+"</b></a></td>"
+        if p[1]:
+            html += "<td> Active </td>"
+        else:
+            html += "<td> Not-Running </td>"
         html += "<td>\
                 <form enctype='multipart/form-data' action='/uploading' method='post'>\
                 <input type='file'  name='file'><input type='submit' name='Upload' value='Upload'>\
                 <input type='submit' name='Terminate' value='Terminate'>\
                 <input type='submit' name='Start' value='Start'></td>\
-                <input type='hidden' name='botname' value=" + str(p[1]) + "/>\
+                <input type='hidden' name='botname' value=\"" + str(p[0]) + "\">\
+                <input type='hidden' name='username' value=\"" + username + "\">\
                 </form>"
         html += "</tr>\n"
         return html
@@ -601,16 +605,24 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             </body></html>
             """
             self.wfile.write(html)
+
         elif "Terminate" in form:
             # terminate bot
-            # self.server.db.terminate_bot( botname )
-            print 'Terminate Bot' + botname
-            pass
+            log.info( 'Terminate Bot' + botname )
+            self.server.db.terminate_bot( botname )
+            self.server.db.con.commit()
+            self.send_response(301)
+            self.send_header("Location", "/user/" + username)
+            self.end_headers()
+
         elif "Start" in form:
             # start bot
-            # self.server.db.start_bot( botname )
             print 'Start Bot' + botname
-            pass
+            self.server.db.start_bot( botname )
+            self.server.db.con.commit()
+            self.send_response(301)
+            self.send_header("Location", "/user/" + username)
+            self.end_headers()
 
     def serve_register(self, match):
         #TODO add client side check for each of the fields
@@ -802,16 +814,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if "Cookie" in self.headers:
             cookie = Cookie.SimpleCookie(self.headers["Cookie"])
 
+        # basic authentication security
         if cookie:
 
             if str(cookie['username'].value) == str(user):
         
                 html = self.header( user )
 
-                # TODO: get all bots under this user
-
-                # dummy way of init bot as empty list
-                # TODO: remove this later once got DB working
                 self.user_bots = self.server.db.get_bots((user))
 
                 if len(self.user_bots) >= 1:
@@ -821,7 +830,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     for bot in self.user_bots:
                         html += self.bots_head()
                         html += "<tbody>"
-                        html += self.bots_line( bot )
+                        html += self.bots_line( bot, user )
                         html += "</tbody></table>"
 
                 # note: there is a hidden field include the username field
@@ -837,19 +846,24 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 """
 
                 # TODO: create/join tournament form
-
-                # Testing purpose i'm getting username of my own bot
+                
 
                 html += "</body></html>"
                 
                 self.wfile.write(html)
 
             else:
-                pass
+                # code 301 for redirect
+                self.send_response(301)
+                self.send_header("Location", "/login")
+                self.end_headers()
 
         else:
             #todo change this to redirect to login page
-            pass
+            # code 301 for redirect
+            self.send_response(301)
+            self.send_header("Location", "/login")
+            self.end_headers()
 
 
     def do_GET(self):

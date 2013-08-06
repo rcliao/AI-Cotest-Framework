@@ -84,7 +84,7 @@ class GameDB():
 					mu real DEFAULT 50.0,\
 					sigma real DEFAULT 13.3,\
 					ngames INTEGER DEFAULT 0,\
-					status bit DEFAULT 1\
+					status bool DEFAULT True\
 				)")
 
 			#### Replays ####
@@ -157,7 +157,7 @@ class GameDB():
 		return int(self.retrieve( "select count(*) from Tourn_Entries where tourn_id=?", (t_id, ) )[0][0])
 
 	def get_bots( self, username ):
-		return self.retrieve("select * from Bots AS b INNER JOIN Users u on u.id=b.owner_id where u.name=?", (username, ))
+		return self.retrieve("select b.name, e.status from Bots AS b INNER JOIN Users u on u.id=b.owner_id inner join Tourn_Entries as e on b.id=e.bot_id where u.name=?", (username, ))
 
 	def get_bot( self, botname ):
 		return self.retrieve("select * from Bots where name=?", (botname, ))
@@ -223,7 +223,12 @@ class GameDB():
 		self.update("insert into Bots values(?,?,?,?)", (None, u_id[0][0], botname, language) )
 
 	def terminate_bot( self, botname ):
-		self.update("insert into kill_client values('%s');" % botname)
+		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
+		self.update("update Tourn_Entries SET status=0 where bot_id=?", (bot_id[0][0], ))
+
+	def start_bot( self, botname ):
+		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
+		self.update("update Tourn_Entries SET status=1 where bot_id=?", (bot_id[0][0], ))
 
 	def delete_player( self, name ):
 		self.update("insert into kill_client values('%s');" % name)
