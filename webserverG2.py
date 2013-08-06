@@ -210,7 +210,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         head += """
         <div id="header">
-        <a href='/' name=top><img src="/data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/howto' name=top><img src="/data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/' name=top><img src="/data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/ranking'><img src="/data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/maps'><img src="/data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -312,7 +312,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         #Bot Rank
         html += "<td>%d</td>"    % p[4]
         #Bot Name
-        html += "<td><a href='/player/" + str(p[2]) + "'><b>"+str(p[2])+"</b></a></td>"
+        html += "<td><a href='/player/" + str(p[12]) + "'><b>"+str(p[12])+"</b></a></td>"
         
         html += "<td>%2.4f</td>" % p[5]
         html += "<td>%2.4f</td>" % p[6]
@@ -348,16 +348,15 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += """
         Here's how to play a game on TCP...</ br>
         <ol>
-        <li>Download a client from the above menu (one is for Python 2.x the other for Python 3.x)</li>
-        <li>Run: python tcpclient.py 209.62.17.40 2081 "python MyBot.py" username password -1</li>
-        <li>Change the game runner to fit your bot. (Can be any command.)</li>
-        <li>Change choose unique username and password pair. (Anything unique works.)</li>
-        <li>The last parameter is the number of games to play in a row. Default is -1, if not specified, which causes it to play games until you tell it to stop. (This is what you usually want)</li>
-        <li>See your rank in the ranking page.</li>
+        <li>Download the starter package from <a href="">here</a> and get started with <a href="">tutorial</a></li>
+        <li>Sign up an account</li>
+        <li>Sign in with your account and go to your profile page</li>
+        <li>Upload your bot</li>
+        <li>Once you uploaded your bot, your bot will be automatically enrolled for the "Main Tournament"</li>
+        <li>Check your status under the tournament you selected</li>
         <li>Profit!</li>
         </ol>
         </ br>
-        Notes: Use python 2.x. Run tcpclient.py without params to see usage.
         """
         html += self.footer()
         html += "</body></html>"
@@ -379,7 +378,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def serve_main(self, match):
-        html = self.header(self.server.opts['host'])
+        html = self.header("Ant Server")
         html += self.game_head()
         html += "<tbody>"
         offset=0
@@ -446,7 +445,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>2:
                 offset=table_lines * int(toks[2][1:])
-        for p in self.server.db.retrieve("select * from Tourn_Entries order by skill desc limit ? offset ?",(table_lines,offset)):
+        for p in self.server.db.get_ranks(1, table_lines, offset):
             html += self.rank_line( p )
 
         html += "</tbody></table>"
@@ -757,7 +756,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         html += """
         <div id="header">
-        <a href='/' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
+        <a href='/howto' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/' name=top><img src="data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/ranking'><img src="data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/maps'><img src="data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -797,44 +796,60 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_user(self, match):
         # get player name using match(Regex)
         user = match.group(0).split("/")[2]
+
+        cookie = Cookie.SimpleCookie()
+
+        if "Cookie" in self.headers:
+            cookie = Cookie.SimpleCookie(self.headers["Cookie"])
+
+        if cookie:
+
+            if str(cookie['username'].value) == str(user):
         
-        html = self.header( user )
+                html = self.header( user )
 
-        # TODO: get all bots under this user
+                # TODO: get all bots under this user
 
-        # dummy way of init bot as empty list
-        # TODO: remove this later once got DB working
-        self.user_bots = self.server.db.get_bots((user))
+                # dummy way of init bot as empty list
+                # TODO: remove this later once got DB working
+                self.user_bots = self.server.db.get_bots((user))
 
-        if len(self.user_bots) >= 1:
-            html += '<p>Your bot(s) are as follow: </p>'
-            # case if user already has bot(s) running
-            # show all the bot rank table
-            for bot in self.user_bots:
-                html += self.bots_head()
-                html += "<tbody>"
-                html += self.bots_line( bot )
-                html += "</tbody></table>"
+                if len(self.user_bots) >= 1:
+                    html += '<p>Your bot(s) are as follow: </p>'
+                    # case if user already has bot(s) running
+                    # show all the bot rank table
+                    for bot in self.user_bots:
+                        html += self.bots_head()
+                        html += "<tbody>"
+                        html += self.bots_line( bot )
+                        html += "</tbody></table>"
 
-        # note: there is a hidden field include the username field
-        html += "<hr>"
-        html += "Upload your new bot here </br>"
-        html += """
-        <form enctype="multipart/form-data" action="/uploading" method="post">
-        <p>Bot: <input type="file" name="file"></p>
-        <p><input type="submit" value="Upload" name="Upload"></p>
-        <input type="hidden" name="username" value=""" + user + """>
-        </form>
-        </body></html>
-        """
+                # note: there is a hidden field include the username field
+                html += "<hr>"
+                html += "Upload your new bot here </br>"
+                html += """
+                <form enctype="multipart/form-data" action="/uploading" method="post">
+                <p>Bot: <input type="file" name="file"></p>
+                <p><input type="submit" value="Upload" name="Upload"></p>
+                <input type="hidden" name="username" value=""" + user + """>
+                </form>
+                </body></html>
+                """
 
-        # TODO: create/join tournament form
+                # TODO: create/join tournament form
 
-        # Testing purpose i'm getting username of my own bot
+                # Testing purpose i'm getting username of my own bot
 
-        html += "</body></html>"
-        
-        self.wfile.write(html)
+                html += "</body></html>"
+                
+                self.wfile.write(html)
+
+            else:
+                pass
+
+        else:
+            #todo change this to redirect to login page
+            pass
 
 
     def do_GET(self):
@@ -844,6 +859,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return
 
         for regex, func in (
+                ('^\/howto', self.serve_howto),
                 ('^\/ranking/p([0-9]?)', self.serve_ranking),
                 ('^\/ranking', self.serve_ranking),
                 ('^\/howto', self.serve_howto),

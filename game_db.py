@@ -165,6 +165,9 @@ class GameDB():
 	def authenticate_user( self, name, password ):
 		return self.retrieve("select id from Users where name=? AND password=?", (name, password))
 
+	def get_ranks( self, t_id, table_lines, offset ):
+		return self.retrieve("select * from Tourn_Entries as e inner join Bots as b on e.bot_id = b.id where tourn_id=? order by skill desc limit ? offset ?",(t_id, table_lines, offset))
+
 	# Checks if a username is available
 	# Returns True if available
 	# Returns False if not available (already in database)
