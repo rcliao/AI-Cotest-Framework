@@ -48,7 +48,8 @@ class GameDB():
 					name TEXT UNIQUE,\
 					password TEXT,\
 					start_date DATE,\
-					end_date DATE\
+					end_date DATE,\
+					last_active DATE\
 				)")
 
 			#### Gameindex ####
@@ -103,7 +104,7 @@ class GameDB():
 
 			if self.db_is_new:
 				self.update("insert into Users values(?, ?, ?, ?)", (None, 'admin', 'cs460Ant', 'rcliao01@gmail.com'))
-				self.update("insert into Tournaments values(?, ?, ?, ?, ? ,?)", (None, 1, 'Main Tournaments', None,	self.now(), self.now()))
+				self.update("insert into Tournaments values(?, ?, ?, ?, ? ,?, ?)", (None, 1, 'Main Tournaments', None,	self.now(), self.now(), self.now() ) )
 				self.con.commit()
 
 			self.con.commit()
@@ -197,6 +198,14 @@ class GameDB():
 		sql = "select * from Tourn_Entries AS e INNER JOIN Bots AS b on e.bot_id=b.id where e.tourn_id=? AND b.name=?"
 		return self.retrieve( sql, (t_id, botname) )
 
+	def get_last_active_tourn( self ):
+		sql = "select * from Tournaments ORDER BY date(last_active) DESC LIMIT 1"
+		return self.retrieve(sql)
+
+	def get_live_bots( self, t_id ):
+		sql = "select * from Bots as b INNER JOIN Tourn_Entries as e on e.bot_id = b.id where e.tourn_id = ?"
+		return self.retrieve( sql, (t_id, ) )
+
 	#### WRITE ####
 
 	def add_replay( self, t_id, id, txt ):
@@ -224,11 +233,11 @@ class GameDB():
 
 	def terminate_bot( self, botname ):
 		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
-		self.update("update Tourn_Entries SET status=0 where bot_id=?", (bot_id[0][0], ))
+		self.update_defered("update Tourn_Entries SET status=0 where bot_id=?", (bot_id[0][0], ))
 
 	def start_bot( self, botname ):
 		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
-		self.update("update Tourn_Entries SET status=1 where bot_id=?", (bot_id[0][0], ))
+		self.update_defered("update Tourn_Entries SET status=1 where bot_id=?", (bot_id[0][0], ))
 
 	def delete_player( self, name ):
 		self.update("insert into kill_client values('%s');" % name)

@@ -589,8 +589,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if ext == 'jar':
                     command = 'java -jar Bots/' + fn
                     language = 'java'
-            
-                self.server.workers.addBot(command, botname)
 
                 existingBot = self.server.db.get_bot( botname )
 

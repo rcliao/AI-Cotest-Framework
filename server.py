@@ -2,18 +2,18 @@
 # worker easier instead of relying on the socket connection
 
 import tcpserver
-import webserverG2
+import webserver
 import threading
 import signal
 import mananger
 
 class WebThread(threading.Thread):
-    def __init__(self, workers):
+    def __init__(self, mananger):
         threading.Thread.__init__(self)
-        self.workers = workers
+        self.manangerThread = manangerThread
         
     def run(self):
-        webserverG2.main(2080, workers)
+        webserver.main(2080, manangerThread)
 
 class TCPThread(threading.Thread):
     def __init__(self):
@@ -22,24 +22,21 @@ class TCPThread(threading.Thread):
     def run(self):
         tcpserver.main()
 
-class WorkerThread(threading.Thread):
+class ManangerThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        worker.main()
-
-    def addBot(self, cmd, botname):
-        worker.addBot(cmd, botname)
+        mananger.main()
 
 if __name__ == '__main__':
 
     try:
         tcpthread = TCPThread()
         tcpthread.start()
-        workers = WorkerThread()
-        workers.start()
-        webthread = WebThread(workers)
+        manangerThread = ManangerThread()
+        manangerThread.start()
+        webthread = WebThread(manangerThread)
         webthread.start()
     except KeyboardInterrupt:
         pass
