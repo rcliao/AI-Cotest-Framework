@@ -155,9 +155,10 @@ class TcpBox(threading.Thread):
 
 
 class TcpGame(threading.Thread):
-    def __init__( self, id, opts, map_name, nplayers ):
+    def __init__( self, id, tourn_id, opts, map_name, nplayers ):
         threading.Thread.__init__(self)
         self.id = id
+        self.tourn_id = tourn_id
         self.opts = opts
         self.players = []
         self.bot_status = []
@@ -211,29 +212,27 @@ class TcpGame(threading.Thread):
         db = game_db.GameDB()
         data = json.dumps(game_result)
 
-        # TODO change this to fit the tournament id
-        db.add_replay( 1, self.id, data )
+        db.add_replay( self.tourn_id, self.id, data )
 
         plr = {}
         for i,p in enumerate(self.players):
             plr[p] = (scores[i], states[i])
-            # TOOD change this 1 to fit the tournament id
-            db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, 1, p, self.id))
-        db.add_game( 1, self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
+            db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, self.tourn_id, p, self.id))
+        db.add_game( self.tourn_id, self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
 
         # update trueskill
         #~ if sum(ranks) >= len(ranks)-1:
         if self.opts['trueskill'] == 'jskills':
-            self.calk_ranks_js( self.players, ranks, db )
+            self.calk_ranks_js( self.tourn_id, self.players, ranks, db )
         else : # default
-            self.calc_ranks_py( self.players, ranks, db )
+            self.calc_ranks_py( self.tourn_id, self.players, ranks, db )
         #~ else:
             #~ log.error( "game "+str(self.id)+" : ranking unsuitable for trueskill " + str(ranks) )
 
         ## this should go out
         # update rankings
         for i, p in enumerate(db.retrieve("select bot_id from Tourn_Entries where tourn_id=1 order by skill desc",())):
-            db.update_player_rank( 1, p[0], i+1 )
+            db.update_player_rank( self.tourn_id, p[0], i+1 )
         db.con.commit()
 
         # dbg display
@@ -247,7 +246,7 @@ class TcpGame(threading.Thread):
         log.info("status : %s" % states)
 
 
-    def calc_ranks_py( self, players, ranks, db ):
+    def calc_ranks_py( self, tourn_id, players, ranks, db ):
         class TrueSkillPlayer(object):
             def __init__(self, name, skill, rank):
                 self.name = name
@@ -257,7 +256,7 @@ class TcpGame(threading.Thread):
 
         ts_players = []
         for i, p in enumerate(players):
-            pdata = db.get_player((1, p))
+            pdata = db.get_player((troun_id, p))
             ts_players.append( TrueSkillPlayer(i, (pdata[0][6],pdata[0][7]), ranks[i] ) )
 
         try:
@@ -270,10 +269,10 @@ class TcpGame(threading.Thread):
             mu    = ts_players[i].skill[0]
             sigma = ts_players[i].skill[1]
             skill = mu - sigma * 3
-            db.update_player_skill(1, p, skill, mu,sigma );
+            db.update_player_skill( tourn_id, p, skill, mu,sigma );
 
 
-    def calk_ranks_js( self, players, ranks, db ):
+    def calk_ranks_js( self, tourn_id, players, ranks, db ):
         ## java needs ';' as separator for win23, ':' for nix&mac
         sep = ':'
         if os.name == 'nt':
@@ -285,7 +284,7 @@ class TcpGame(threading.Thread):
 
             lines = []
             for i,p in enumerate(players):
-                pdata = db.get_player( 1, p )
+                pdata = db.get_player( tourn_id, p )
                 lines.append("P %s %d %f %f\n" % (p, ranks[i], pdata[0][6], pdata[0][7]))
 
             for i,p in enumerate(players):
@@ -322,7 +321,7 @@ class TcpGame(threading.Thread):
             mu    = float(result[1].replace(",","."))
             sigma = float(result[2].replace(",","."))
             skill = mu -sigma * 3
-            db.update_player_skill( 1, p, skill, mu, sigma )
+            db.update_player_skill( tourn_id, p, skill, mu, sigma )
 
 
 
@@ -335,6 +334,8 @@ class TCPGameServer(object):
         self.ip = ip
         self.port = port
         self.backlog = 5
+
+        self.tourn_id = 1
 
         self.bind()
 
@@ -390,7 +391,7 @@ class TCPGameServer(object):
         opts['map'] = map_data
 
         log.info( "game %d %s needs %d players" %(self.latest,map_name,nplayers) )
-        g = TcpGame( self.latest, opts, map_name, nplayers)
+        g = TcpGame( self.latest, self.tourn_id, opts, map_name, nplayers)
         book.games.add(g.id)
         return g
 
@@ -421,7 +422,7 @@ class TCPGameServer(object):
         # have to create the game before collecting respective num of players:
         self.db = game_db.GameDB()
         self.kill_list = self.db.get_kill_client()
-        games = self.db.retrieve("select id from Tourn_Games where tourn_id=1 order by id desc limit 1;",())
+        games = self.db.retrieve( "select id from Tourn_Games where tourn_id=? order by id desc limit 1;",( self.tourn_id, ) )
         if len(games) > 0:
             self.latest = int(games[0][0])
         else:
@@ -448,43 +449,53 @@ class TCPGameServer(object):
                         client, address = self.server.accept()
                         data = client.recv(4096).strip()
                         data = data.split(" ")
-                        name = data[1]
-                        name_ok = True
-                        
-                        #it kinda works, but for loop needs to be redone
-                        i = -1
-                        for entry in self.kill_list:
-                            if (entry[i] == name):
-                                self.kill_client(client, "deleted because on kill_list", True, name)
-                                break
+
+                        operation = data[0]
+
+                        if operation == "TOURNAMENT":
+
+                            # switch the tourn_id
+                            self.tourn_id = data[1]
+
+                        elif operation == "USER":
+
+                            name = data[1]
+                            name_ok = True
+                            
+                            #it kinda works, but for loop needs to be redone
+                            i = -1
+                            for entry in self.kill_list:
+                                if (entry[i] == name):
+                                    self.kill_client(client, "deleted because on kill_list", True, name)
+                                    break
 
 
-                        for bw in ["shit","porn","pr0n","pron","dick","tits","hitler","fuck","gay","cunt","asshole"]:
-                            if name.find(bw) > -1:
-                                #self.reject_client(client, "can you think of another name than '%s', please ?" % name )
-                                self.kill_client(client, "can you think of another name than '%s', please ?" % name )
-                                name_ok = False
-                                break
-                        if not name_ok:
-                            continue
-                        # if in 'single game per player(name)' mode, just reject the connection here..
-                        if (name in book.players) and (str(self.opts['multi_games'])=="False"):
-                            self.reject_client(client, "%s is already running a game." % name, False )
-                            continue
-                        # already in next_game ?
-                        if name in next_game.players:
-                            self.reject_client(client, '%s is already queued for game %d' % (name, next_game.id), False )
-                            continue
+                            for bw in ["shit","porn","pr0n","pron","dick","tits","hitler","fuck","gay","cunt","asshole"]:
+                                if name.find(bw) > -1:
+                                    #self.reject_client(client, "can you think of another name than '%s', please ?" % name )
+                                    self.kill_client(client, "can you think of another name than '%s', please ?" % name )
+                                    name_ok = False
+                                    break
+                            if not name_ok:
+                                continue
+                            # if in 'single game per player(name)' mode, just reject the connection here..
+                            if (name in book.players) and (str(self.opts['multi_games'])=="False"):
+                                self.reject_client(client, "%s is already running a game." % name, False )
+                                continue
+                            # already in next_game ?
+                            if name in next_game.players:
+                                self.reject_client(client, '%s is already queued for game %d' % (name, next_game.id), False )
+                                continue
 
-                        # start game if enough players joined
-                        avail = self.addplayer( next_game, name, client )
+                            # start game if enough players joined
+                            avail = self.addplayer( next_game, name, client )
 
-                        if avail==-1:
-                            continue
-                        log.info('user %s connected to game %d (%d/%d)' % (name,next_game.id,avail,next_game.nplayers))
-                        if avail == next_game.nplayers:
-                            next_game.start()
-                            next_game = self.create_game()
+                            if avail==-1:
+                                continue
+                            log.info('user %s connected to game %d (%d/%d)' % (name,next_game.id,avail,next_game.nplayers))
+                            if avail == next_game.nplayers:
+                                next_game.start()
+                                next_game = self.create_game()
 
                 # remove bots from next_game that died between connect and the start of the game
                 for i, b in enumerate(next_game.bots):
