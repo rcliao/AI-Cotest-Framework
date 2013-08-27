@@ -29,6 +29,9 @@ def addBot(cmd, botname):
 def removeBot(botname):
 	current_bots.remove( botname )
 
+def resetBotList():
+	current_bots = []
+
 
 class botClient(threading.Thread):
 	def __init__(self, cmd, botname):

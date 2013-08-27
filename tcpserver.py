@@ -155,7 +155,7 @@ class TcpBox(threading.Thread):
 
 
 class TcpGame(threading.Thread):
-    def __init__( self, id, tourn_id, opts, map_name, nplayers ):
+    def __init__( self, id, tourn_id, opts, map_name, nplayers, mananger ):
         threading.Thread.__init__(self)
         self.id = id
         self.tourn_id = tourn_id
@@ -166,6 +166,8 @@ class TcpGame(threading.Thread):
         self.nplayers = nplayers
         self.bots=[]
         self.ants = Ants(opts)
+
+        self.mananger = mananger
 
     def __del__(self):
         try:
@@ -234,6 +236,8 @@ class TcpGame(threading.Thread):
         for i, p in enumerate(db.retrieve("select bot_id from Tourn_Entries where tourn_id=1 order by skill desc",())):
             db.update_player_rank( self.tourn_id, p[0], i+1 )
         db.con.commit()
+
+        self.mananger.resetBotList()
 
         # dbg display
         ds = time() - starttime
@@ -326,7 +330,7 @@ class TcpGame(threading.Thread):
 
 
 class TCPGameServer(object):
-    def __init__(self, opts, ip, port, maps):
+    def __init__(self, opts, ip, port, maps, mananger):
         self.opts = opts
         self.maps = maps
 
@@ -338,6 +342,8 @@ class TCPGameServer(object):
         self.tourn_id = 1
 
         self.bind()
+
+        self.mananger = mananger
 
     def addplayer(self, game, name, sock):
         box = TcpBox(sock)
@@ -383,7 +389,7 @@ class TCPGameServer(object):
         return map_path, data, int(nplayers)
 
 
-    def create_game(self):
+    def create_game(self, mananger):
         # get a map and create antsgame
         self.latest += 1
         map_name, map_data, nplayers = self.select_map()
@@ -391,7 +397,7 @@ class TCPGameServer(object):
         opts['map'] = map_data
 
         log.info( "game %d %s needs %d players" %(self.latest,map_name,nplayers) )
-        g = TcpGame( self.latest, self.tourn_id, opts, map_name, nplayers)
+        g = TcpGame( self.latest, self.tourn_id, opts, map_name, nplayers, mananger)
         book.games.add(g.id)
         return g
 
@@ -495,7 +501,7 @@ class TCPGameServer(object):
                             log.info('user %s connected to game %d (%d/%d)' % (name,next_game.id,avail,next_game.nplayers))
                             if avail == next_game.nplayers:
                                 next_game.start()
-                                next_game = self.create_game()
+                                next_game = self.create_game( self.mananger )
 
                 # remove bots from next_game that died between connect and the start of the game
                 for i, b in enumerate(next_game.bots):
@@ -525,7 +531,7 @@ class TCPGameServer(object):
 
 
 
-def main(ip = '', tcp_port = 2081):
+def main(ip = '', tcp_port = 2081, mananger):
 
     opts = {
         ## tcp opts:
@@ -555,7 +561,7 @@ def main(ip = '', tcp_port = 2081):
         print("Error: Found no maps! Please create a few in the maps/ folder.")
         return
 
-    tcp = TCPGameServer( opts, ip, tcp_port, maps )
+    tcp = TCPGameServer( opts, ip, tcp_port, maps, mananger )
     tcp.serve()
 
 

@@ -8,19 +8,20 @@ import signal
 import mananger
 
 class WebThread(threading.Thread):
-    def __init__(self, mananger):
+    def __init__(self, manangerThread):
         threading.Thread.__init__(self)
         self.manangerThread = manangerThread
         
     def run(self):
-        webserver.main(2080, manangerThread)
+        webserver.main(2080, self.manangerThread)
 
 class TCPThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, manangerThread):
         threading.Thread.__init__(self)
+        self.manangerThread = manangerThread
 
     def run(self):
-        tcpserver.main()
+        tcpserver.main(manangerThread)
 
 class ManangerThread(threading.Thread):
     def __init__(self):
@@ -32,10 +33,10 @@ class ManangerThread(threading.Thread):
 if __name__ == '__main__':
 
     try:
-        tcpthread = TCPThread()
-        tcpthread.start()
         manangerThread = ManangerThread()
         manangerThread.start()
+        tcpthread = TCPThread(manangerThread)
+        tcpthread.start()
         webthread = WebThread(manangerThread)
         webthread.start()
     except KeyboardInterrupt:
