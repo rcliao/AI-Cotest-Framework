@@ -86,7 +86,7 @@ def tcp(host, port, bot_command, user, options):
                         return
                     continue # bad connection, keep on trying
 
-                print( line )
+                #print( line )
                 if line.startswith("INFO:"): # not meant for the bot
                     if (line.find("already running")>0) or (line.find("already queued")>0):
                         ## penalty for getting eliminated, but still trying to be first in the upcoming game.
@@ -133,7 +133,8 @@ def tcp(host, port, bot_command, user, options):
             # if there's no orders, send at least an empty line
             if (client_mess==""):
                 client_mess="\r\n"
-            print( client_mess )
+            # doesnt need to print client output anymore                
+            #print( client_mess )
 
             sock.sendall( client_mess )
     finally:

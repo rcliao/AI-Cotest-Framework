@@ -238,6 +238,8 @@ class TcpGame(threading.Thread):
         db.con.commit()
 
         self.mananger.resetBotList()
+        db.update_tournament_activity( self.tourn_id )
+        db.con.commit()
 
         # dbg display
         ds = time() - starttime
@@ -434,7 +436,7 @@ class TCPGameServer(object):
         else:
             self.latest = 0
 
-        next_game = self.create_game()
+        next_game = self.create_game( self.mananger )
         t = 0
         while self.server:
             try:
@@ -531,7 +533,7 @@ class TCPGameServer(object):
 
 
 
-def main(ip = '', tcp_port = 2081, mananger):
+def main(mananger, ip = '', tcp_port = 2081):
 
     opts = {
         ## tcp opts:

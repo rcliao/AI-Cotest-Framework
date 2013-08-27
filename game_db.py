@@ -203,7 +203,7 @@ class GameDB():
 		return self.retrieve(sql)
 
 	def get_live_bots( self, t_id ):
-		sql = "select * from Bots as b INNER JOIN Tourn_Entries as e on e.bot_id = b.id where e.tourn_id = ?"
+		sql = "select * from Bots as b INNER JOIN Tourn_Entries as e on e.bot_id = b.id where e.tourn_id = ? and e.status=1"
 		return self.retrieve( sql, (t_id, ) )
 
 	#### WRITE ####
@@ -256,6 +256,10 @@ class GameDB():
 	## needs a final commit() 
 	def update_player_rank( self, t_id, bot_id, rank ):
 		self.update_defered("update Tourn_entries set rank=? where tourn_id=? AND bot_id=?", (rank, t_id, bot_id))
+
+	def update_tournament_activity( self, t_id ):
+		sql = "update Tournaments set last_active=? where id=?"
+		self.update_defered(sql, (self.now(), t_id))
 		
 	#~ def get_opts( self, opts ):
 		#~ r = self.retrieve( "select * from opts" )

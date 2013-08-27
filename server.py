@@ -30,6 +30,12 @@ class ManangerThread(threading.Thread):
     def run(self):
         mananger.main()
 
+    def addBot(self, cmd, botname):
+        mananger.addBot(cmd, botname)
+
+    def resetBotList(self):
+        mananger.resetBotList()
+
 if __name__ == '__main__':
 
     try:

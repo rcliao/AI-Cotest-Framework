@@ -46,19 +46,18 @@ def run():
 	# create a infinite loop to server for mananger
 	db = game_db.GameDB()
 	while( True ):
-		if len(current_bots) == 0:
-			last_active = db.get_last_active_tourn()
+		last_active = db.get_last_active_tourn()
 
-			active_bots = db.get_live_bots( last_active[0][0] )
+		active_bots = db.get_live_bots( last_active[0][0] )
 
-			for bot in active_bots:
-				# TODO: implement more language support
-				if bot[3] == "java":
-					botname = bot[2]
-					if botname not in current_bots:
-						cmd = "java -jar Bots/" + botname + ".jar"
-						print 'started a java bot'
-						addBot(cmd, botname)
+		for bot in active_bots:
+			# TODO: implement more language support
+			if bot[3] == "java":
+				botname = bot[2]
+				if botname not in current_bots:
+					cmd = "java -jar Bots/" + botname + ".jar"
+					print 'started a java bot'
+					addBot(cmd, botname)
 
 
 def main():
