@@ -86,6 +86,9 @@ style = """
         margin: 10px;
         padding: 5px;
     }
+    .tournament-switch {
+        text-align: center;
+    }
     hr {
         color:#111;
         background-color:#555;
@@ -141,6 +144,8 @@ class AntsHttpServer(HTTPServer):
         self.maps = load_map_info()
         self.db = game_db.GameDB()
 
+        self.tourn_id = 1
+
         HTTPServer.__init__(self, *args)
 
 
@@ -183,6 +188,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def header(self, title):
         self.send_head()
 
+        if self.check_auth():
+            self.tourns = self.server.db.get_tournaments( username=self.username )
+        else:
+            self.tourns = self.server.db.get_tournaments()
+
+        self.tourn_name = self.server.db.get_tournament_name(self.server.tourn_id)[0][0]
+
         head = """<html><head>
         <!--link rel="icon" href='/favicon.ico'-->
         <title>"""  + title + """</title>
@@ -209,6 +221,19 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             <a href='/register' name=top> Register </a>"""
 
         head += """
+        <hr>
+        <div class="tournament-switch">
+            You are currently at \" """ + self.tourn_name + """ \"
+            <form action="/switchTourn" method="post">
+                <select name="tournID">
+        """
+        for tourn in self.tourns:
+            head += "<option value=\"" + str(tourn[0]) + "\">" + tourn[2] + "</option>"
+        head += """
+            </select>
+            <input type="submit" value="Switch Tournament">
+            </form>
+        </div>
         <div id="header">
         <a href='/howto' name=top><img src="/data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
         <a href='/' name=top><img src="/data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
@@ -325,25 +350,51 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return html
 
     def bots_head(self):
-        return """<table id='players' class='tablesorter' width='98%'>
-            <thead><tr><th>Bot Name</th><th>Status</th><th>Operation</th></tr></thead>"""
+        return """
+        <table id='players' class='tablesorter' width='98%'>
+            <thead>
+                <tr>
+                    <th>Bot Name</th>
+                    <th>Status</th>
+                    <th>Operation</th>
+                    <th>Enroll Tournament</th>
+                </tr>
+            </thead>"""
 
     def bots_line( self, p, username ):
         html = "<tr>"
         #Bot Name
-        html += "<td><a href='/player/" + str(p[0]) + "'><b>"+str(p[0])+"</b></a></td>"
+        html += "<td><a href='/player/" + str(p[0]) + "'><b>"+str(p[0])+" @ " + p[4] + "</b></a></td>"
         if p[1]:
-            html += "<td> Active </td>"
+            html += "<td style='color: green;'> Active </td>"
         else:
-            html += "<td> Not-Running </td>"
+            html += "<td style='color: red;'> Not-Running </td>"
         html += "<td>\
                 <form enctype='multipart/form-data' action='/uploading' method='post'>\
-                <input type='file'  name='file'><input type='submit' name='Upload' value='Upload'>\
-                <input type='submit' name='Terminate' value='Terminate'>\
-                <input type='submit' name='Start' value='Start'></td>\
-                <input type='hidden' name='botname' value=\"" + str(p[0]) + "\">\
-                <input type='hidden' name='username' value=\"" + username + "\">\
+                    <input type='file'  name='file'><input type='submit' name='Upload' value='Upload'>\
+                    <input type='submit' name='Terminate' value='Terminate'>\
+                    <input type='submit' name='Start' value='Start'></td>\
+                    <input type='hidden' name='tID' value=\"" + str(p[3]) + "\">\
+                    <input type='hidden' name='botname' value=\"" + str(p[0]) + "\">\
+                    <input type='hidden' name='username' value=\"" + username + "\">\
                 </form>"
+        html += """
+        <td>
+            <form action="/enrollTourn" method="post">
+        """
+        for tourn in self.tourns:
+            tourn_bots = self.server.db.get_bot_tournaments( tourn[0], p[2] )
+            if len(tourn_bots) > 0:
+                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\" checked>" + tourn[2] + "</br>"
+            else:
+                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\">" + tourn[2] + "</br>"
+        html += """
+            <input type="hidden" name="botID" value=""" + str(p[2]) + """>
+            <input type='hidden' name='username' value=\"""" + username + """\">
+            <input type="submit" value="Enroll Tournament">
+            </form>
+        </td>
+        """
         html += "</tr>\n"
         return html
 
@@ -358,7 +409,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <li>Upload your bot</li>
         <li>Once you uploaded your bot, your bot will be automatically enrolled for the "Main Tournament"</li>
         <li>Check your status under the tournament you selected</li>
-        <li>Profit!</li>
+        <li>Play!</li>
         </ol>
         </ br>
         """
@@ -389,10 +440,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if match and (len(match.group(0))>2):
             offset=table_lines * int(match.group(0)[2:])
 
-        for g in self.server.db.get_games(1, offset,table_lines):
+        for g in self.server.db.get_games(self.server.tourn_id, offset,table_lines):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/", self.server.db.num_games( 1 ) )
+        html += self.page_counter("/", self.server.db.num_games( self.server.tourn_id ) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</div></body></html>"
@@ -402,7 +453,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_player(self, match):
         # get player name using match(Regex)
         player = match.group(0).split("/")[2]
-        res = self.server.db.get_player(1, player)
+        res = self.server.db.get_player(self.server.tourn_id, player)
         if len(res)< 1:
             self.send_error(404, 'Player Not Found: %s' % self.path)
             return
@@ -418,10 +469,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>3:
                 offset=table_lines * int(toks[3][1:])
-        for g in self.server.db.get_games_for_player(1, offset, table_lines, player):
+        for g in self.server.db.get_games_for_player(self.server.tourn_id, offset, table_lines, player):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/player/"+player+"/", self.server.db.num_games_for_player(1, player) )
+        html += self.page_counter("/player/"+player+"/", self.server.db.num_games_for_player(self.server.tourn_id, player) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</body></html>"
@@ -449,11 +500,11 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>2:
                 offset=table_lines * int(toks[2][1:])
-        for p in self.server.db.get_ranks(1, table_lines, offset):
+        for p in self.server.db.get_ranks(self.server.tourn_id, table_lines, offset):
             html += self.rank_line( p )
 
         html += "</tbody></table>"
-        html += self.page_counter("/ranking/", self.server.db.num_players( 1 ) )
+        html += self.page_counter("/ranking/", self.server.db.num_players( self.server.tourn_id ) )
         html += self.footer()
         html += self.footer_sort('players')
         html += self.path
@@ -566,6 +617,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         password = form.getfirst('password', '')
         username = form.getfirst('username', '')
         botname = form.getfirst('botname', '')
+        t_id = form.getfirst('tID', '')
 
         
         if "Upload" in form:
@@ -595,7 +647,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if not existingBot:
                     # TODO: change to add bot including username later
                     self.server.db.add_bot( username, botname, language )
-                    self.server.db.enroll_bot( 1, botname )
+                    bot = self.server.db.get_bot( botname )
+                    self.server.db.enroll_bot( 1, bot[0][0] )
                
             
             html = self.header("File Uploaded")
@@ -607,7 +660,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         elif "Terminate" in form:
             # terminate bot
             log.info( 'Terminate Bot' + botname )
-            self.server.db.terminate_bot( botname )
+            self.server.db.terminate_bot( botname, t_id )
             self.server.db.con.commit()
             self.send_response(301)
             self.send_header("Location", "/user/" + username)
@@ -616,7 +669,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         elif "Start" in form:
             # start bot
             print 'Start Bot' + botname
-            self.server.db.start_bot( botname )
+            self.server.db.start_bot( botname, t_id )
             self.server.db.con.commit()
             self.send_response(301)
             self.send_header("Location", "/user/" + username)
@@ -632,6 +685,121 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <p>Email: <input type="text" name="email"></p>
         <p><input type="submit" value="Register"></p>
         </form>
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_createTourn(self, match):
+        cookie = Cookie.SimpleCookie()
+
+        if "Cookie" in self.headers:
+            cookie = Cookie.SimpleCookie(self.headers["Cookie"])
+
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        tName = form.getfirst("tName","")
+        password = form.getfirst("password","")
+        message = ""
+
+        if tName:
+            # all fields are required
+                log.info("creating tournament: %s" % tName)
+                self.server.db.add_tournament( str(cookie['username'].value), tName, password )
+                message = "Tournament: %s successfully created" % tName
+        else:
+            message = "Please fill out the name"
+
+        html = self.header("Tournament Creation")
+        html += message + """
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_deleteTourn(self, match):
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        t_id = form.getfirst("tournID","")
+        message = ""
+
+        if t_id:
+            # all fields are required
+                self.server.db.delete_tournament( t_id )
+                message = "Tournament: successfully deleted"
+        else:
+            message = "Please fill out all the fields"
+
+        html = self.header("Tournament Deletion")
+        html += message + """
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_switchTourn(self, match):
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        t_id = form.getfirst("tournID","")
+        message = ""
+
+        if t_id:
+            # all fields are required
+                self.server.tourn_id = t_id
+                message = "Tournament: successfully switched"
+        else:
+            message = "Please fill out all the fields"
+
+        html = self.header("Tournament Switched")
+        html += message + """
+        </body></html>
+        """
+        self.wfile.write(html)
+
+    def serve_enrollTourn(self, match):
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        botID = form.getfirst("botID", "")
+        t_ids = form.getvalue("tournID")
+        username = form.getfirst("username", "")
+
+        message = ""
+
+        if username:
+            tourns = self.server.db.get_tournaments( username=username )
+        else:
+            tourns = self.server.db.get_tournaments()
+
+        if t_ids:
+            # all fields are required
+            for all_tourn in tourns:
+                if str(all_tourn[0]) not in t_ids:
+                    self.server.db.disenroll_bot( all_tourn[0], botID )
+                else:
+                    self.server.db.enroll_bot( all_tourn[0], botID )
+            message = "Tournament enrollments: completed"
+        else:
+            message = "Please fill out all the fields"
+
+        html = self.header("Tournament Enrollment")
+        html += message + """
         </body></html>
         """
         self.wfile.write(html)
@@ -819,7 +987,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         
                 html = self.header( user )
 
-                self.user_bots = self.server.db.get_bots((user))
+                self.user_bots = self.server.db.get_bots(user)
 
                 if len(self.user_bots) >= 1:
                     html += '<p>Your bot(s) are as follow: </p>'
@@ -831,6 +999,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         html += self.bots_line( bot, user )
                         html += "</tbody></table>"
 
+                # the following section is for uploading new bot
                 # note: there is a hidden field include the username field
                 html += "<hr>"
                 html += "Upload your new bot here </br>"
@@ -840,11 +1009,59 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 <p><input type="submit" value="Upload" name="Upload"></p>
                 <input type="hidden" name="username" value=""" + user + """>
                 </form>
-                </body></html>
                 """
-
-                # TODO: create/join tournament form
+                html += "<hr>"
+                # the following section is to add/delete tournament
+                # TODO: include a date input here for end date
+                html += "Create your new Tournament here </br>"
+                html += """ 
+                <form action="/createTourn" method="post">
+                <p>Tournament Name: <input type="text" name="tName"></p>
+                <p>Tournament Password: <input type="password" name="password"></p>
+                <p> - Note: including password will make your tournament private </p>
+                <p><input type="submit" value="Create New Tournament!"></p>
+                </form>
+                """
+                html += "<hr>"
+                # following section is to show the tournament this user created
                 
+                self.user_tourns = self.server.db.get_tournaments_user(user)
+
+                if len(self.user_tourns) >= 1:
+                    html += "<p>Tournaments you've created: </p>"
+                    html += """
+                    <table id='players' class='tablesorter' width='98%'>
+                        <tr>
+                            <th>Tournament Name</th>
+                            <th>Created Date</th>
+                            <th>Private</th>
+                            <th>Operation</th>
+                        </tr>
+                    """
+                    for tourn in self.user_tourns:
+                        html += "<tr>"
+                        html += "<td>"
+                        html += tourn[2]
+                        html += "</td>"
+                        html += "<td>"
+                        html += tourn[4]
+                        html += "</td>"
+                        html += "<td>"
+                        if tourn[3]:
+                            html += "&#10004;"
+                        html += "</td>"
+                        html += "<td>"
+                        html += """
+                        <form action="/deleteTourn" method="post">
+                            <input type="hidden" name="tournID" value=""" + str(tourn[0]) + """>
+                            <input type="submit" value="Delete Tournament">
+                        </form>
+                        """
+                        html += "</td>"
+                        html += "</tr>"
+                    html += """
+                    </table>
+                    """
 
                 html += "</body></html>"
                 
@@ -902,6 +1119,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/uploading', self.serve_uploading),
                 ('^\/registering', self.serve_registering),
                 ('^\/auth', self.serve_auth),
+                ('^\/createTourn', self.serve_createTourn),
+                ('^\/deleteTourn', self.serve_deleteTourn),
+                ('^\/switchTourn', self.serve_switchTourn),
+                ('^\/enrollTourn', self.serve_enrollTourn),
                 ):
             match = re.search(regex, self.path)
             if match:

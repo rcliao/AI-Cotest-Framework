@@ -158,7 +158,7 @@ class GameDB():
 		return int(self.retrieve( "select count(*) from Tourn_Entries where tourn_id=?", (t_id, ) )[0][0])
 
 	def get_bots( self, username ):
-		return self.retrieve("select b.name, e.status from Bots AS b INNER JOIN Users u on u.id=b.owner_id inner join Tourn_Entries as e on b.id=e.bot_id where u.name=?", (username, ))
+		return self.retrieve("select b.name, e.status, b.id, t.id, t.name from Bots AS b INNER JOIN Users u on u.id=b.owner_id inner join Tourn_Entries as e on b.id=e.bot_id inner join Tournaments as t on e.tourn_id = t.id where u.name=?", (username, ))
 
 	def get_bot( self, botname ):
 		return self.retrieve("select * from Bots where name=?", (botname, ))
@@ -178,14 +178,26 @@ class GameDB():
 		else:
 			return True
 
-	def get_tournaments( self, tournamentname = '' ):
+	def get_tournaments( self, tournamentname = '', username='' ):
 		if tournamentname:
 			return self.retrieve("select * from Tournaments where name=?", (tournamentname, ))
 		else:
-			return self.retrieve("select * from Tournaments")
+			# only return the public tournament
+			if username:
+				user_id = self.retrieve("select * from Users where name=?", (username, ))[0][0]
+				return self.retrieve("select * from Tournaments where password = '' or password is null or creator_id=?", (user_id, ) )
+			else:
+				return self.retrieve("select * from Tournaments where password = '' or password is null")
+
+	def get_tournament_name( self, t_id ):
+		return self.retrieve("select name from Tournaments where id=?", (t_id, ) )
 
 	def get_bot_tournaments( self, t_id, bot_id ):
 		return self.retrieve("select * from Tourn_Entries where tourn_id=? AND bot_id=?", (t_id, bot_id))
+
+	def get_tournaments_user( self, username ):
+		user = self.retrieve("select * from Users where name=?", (username, ))
+		return self.retrieve("select * from Tournaments where creator_id=?", (user[0][0], ))
 
 	def get_kill_client( self ):
 		sql = "select * from kill_client"
@@ -216,34 +228,44 @@ class GameDB():
 	def add_game( self, t_id, i, map, turns, draws, players ):
 		self.update("insert into Tourn_Games values(?, ?, ?, ?, ?, ?, ?)", (i, t_id, players, self.now(), map, turns, draws))
 		
-	def add_tournament( self, t_id, username, tournamentname, password =''):
-		self.update("insert into Tournaments values(?,?,?,?,?,?)", (None, tournamentname, username, password, self.now(), self.now()))
+	def add_tournament( self, username, tournamentname, password):
+		user = self.retrieve("select * from Users where name=?", (username, ))
+		if password:
+			self.update( "insert into Tournaments values(?,?,?,?,?,?,?)", (None, user[0][0], tournamentname, password, self.now(), self.now(), self.now() ) )
+		else:
+			self.update( "insert into Tournaments values(?,?,?,?,?,?,?)", (None, user[0][0], tournamentname, None, self.now(), self.now(), self.now() ) )
 	
 	def add_user( self, name, password, email ):
 		self.update("insert into Users values(?,?,?,?)", (None, name, password, email))
 
-	def enroll_bot( self, t_id, bot_name ):
-		bot_id = self.retrieve("select id from Bots where name=?", (bot_name, ))
-		self.update("insert into Tourn_Entries values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			(None, t_id, bot_id[0][0], self.now(),1000,0.0,50.0,50.0/3.0,0,1))
+	def enroll_bot( self, t_id, bot_id ):
+		existingbot = self.retrieve("select * from Tourn_Entries where bot_id=? and tourn_id=?", (bot_id, t_id))
+		if len(existingbot) == 0:
+			self.update("insert into Tourn_Entries values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (None, t_id, bot_id, self.now(),1000, 0.0, 50.0, 50.0/3.0, 0, 1) )
+
+	def disenroll_bot( self, t_id, bot_id ):
+		self.update("delete from Tourn_Entries where tourn_id=? and bot_id=?", (t_id, bot_id))
 
 	def add_bot( self, username, botname, language ):
 		u_id = self.retrieve("select id from Users where name=?", (username, ))
 		self.update("insert into Bots values(?,?,?,?)", (None, u_id[0][0], botname, language) )
 
-	def terminate_bot( self, botname ):
+	def terminate_bot( self, botname, t_id ):
 		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
-		self.update_defered("update Tourn_Entries SET status=0 where bot_id=?", (bot_id[0][0], ))
+		self.update_defered("update Tourn_Entries SET status=0 where bot_id=? and tourn_id=?", (bot_id[0][0], t_id))
 
-	def start_bot( self, botname ):
+	def start_bot( self, botname, t_id ):
 		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )
-		self.update_defered("update Tourn_Entries SET status=1 where bot_id=?", (bot_id[0][0], ))
+		self.update_defered("update Tourn_Entries SET status=1 where bot_id=? and tourn_id=?", (bot_id[0][0], t_id))
 
 	def delete_player( self, name ):
 		self.update("insert into kill_client values('%s');" % name)
 
 	def delete_kill_name( self, name ):
 		self.update("delete from kill_client where name = '%s';" % name)
+
+	def delete_tournament( self, t_id ):
+		self.update("delete from Tournaments where id=?", (t_id, ))
 
 	def update_player_skill( self, t_id, botname, skill, mu, sig ):
 		bot_id = self.retrieve( "select id from Bots where name=?", (botname, ) )

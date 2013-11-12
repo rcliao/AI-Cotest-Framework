@@ -10,6 +10,8 @@ from socket import socket, AF_INET, SOCK_STREAM
 import tcpclient
 import game_db
 
+import timeit
+
 """
 	This mananger will match live bots in the same tournament, and instantiate bots as tcpclients
 	to connect to tcpserver
@@ -40,12 +42,14 @@ class botClient(threading.Thread):
 		self.botname = botname
 
 	def run(self):
-		tcpclient.run_forever('localhost', 2081, self.cmd, self.botname)
+		tcpclient.tcp('localhost', 2081, self.cmd, self.botname, {})
 
 def run():
 	# create a infinite loop to server for mananger
 	db = game_db.GameDB()
 	while( True ):
+		start = timeit.default_timer()
+
 		last_active = db.get_last_active_tourn()
 
 		active_bots = db.get_live_bots( last_active[0][0] )
@@ -58,6 +62,12 @@ def run():
 					cmd = "java -jar Bots/" + botname + ".jar"
 					print 'started a java bot'
 					addBot(cmd, botname)
+
+		stop = timeit.default_timer()
+
+		if (stop - start) > 25:
+			resetBotList()
+			break
 
 
 def main():

@@ -40,10 +40,11 @@ if __name__ == '__main__':
 
     try:
         manangerThread = ManangerThread()
-        manangerThread.start()
         tcpthread = TCPThread(manangerThread)
         tcpthread.start()
         webthread = WebThread(manangerThread)
         webthread.start()
+
+        manangerThread.start()
     except KeyboardInterrupt:
         pass
