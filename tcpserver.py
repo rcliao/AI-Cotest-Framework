@@ -19,9 +19,11 @@ import json
 from time import time,asctime
 import datetime
 
+# Game engine speicific
 from ants import Ants
 from engine import run_game
 
+# database
 import game_db
 
 
@@ -53,8 +55,6 @@ class Bookkeeper:
 
 book = Bookkeeper()
 
-#botsToKill = []
-
 def load_map_info():
     maps={}
     for root,dirs,filenames in os.walk("maps"):
@@ -72,6 +72,9 @@ def load_map_info():
 #
 ## sandbox impl
 #
+'''
+This sandbox also send the information via socket
+'''
 class TcpBox(threading.Thread):
     def __init__(self, sock):
         threading.Thread.__init__(self)
@@ -153,22 +156,29 @@ class TcpBox(threading.Thread):
     def read_error(self, timeout=0):
         return None
 
-
+'''
+This is the game implementation and the usage of the ant game
+'''
 class TcpGame(threading.Thread):
     def __init__( self, id, tourn_id, opts, map_name, nplayers, mananger ):
         threading.Thread.__init__(self)
         self.id = id
         self.tourn_id = tourn_id
         self.opts = opts
+        # keep track of which player (used in the ranking, not the actual bot) is playing
         self.players = []
         self.bot_status = []
         self.map_name = map_name
         self.nplayers = nplayers
+        # this is where bot is, bunch of socket connnection so far
+        # TODO: changes these socket to sys.stdin ot sys.stdout
         self.bots=[]
+        # init the game according the options passed in the constructor
         self.ants = Ants(opts)
 
         self.mananger = mananger
 
+    # when the game ends
     def __del__(self):
         try:
             book.games.remove(self.id)
@@ -176,13 +186,16 @@ class TcpGame(threading.Thread):
         for b in self.bots:
             b.kill()
 
-
     def run(self):
         starttime = time()
         log.info( "run game %d %s %s" % (self.id,self.map_name,self.players) )
+        # when the game start, send the hello meesage to each bot
         for i,p in enumerate(self.bots):
             p.write( "INFO: game " + str(self.id) + " " + str(self.map_name) + " : " + str(self.players) + "\n" )
 
+        # get the result after the game being ran
+        # where run_game comes from the game engine
+        # to separate the game engine, take out here
         game_result = run_game(self.ants, self.bots, self.opts)
 
         try:
@@ -210,7 +223,7 @@ class TcpGame(threading.Thread):
         for i,p in enumerate(self.players):
             game_result['playernames'].append(p)
 
-        # save to db
+        # save result as json to db
         db = game_db.GameDB()
         data = json.dumps(game_result)
 
@@ -218,6 +231,7 @@ class TcpGame(threading.Thread):
 
         plr = {}
         for i,p in enumerate(self.players):
+            # for each player get the final score of the game and update to the Tourn_GameIndex table
             plr[p] = (scores[i], states[i])
             db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, self.tourn_id, p, self.id))
         db.add_game( self.tourn_id, self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
@@ -228,15 +242,13 @@ class TcpGame(threading.Thread):
             self.calk_ranks_js( self.tourn_id, self.players, ranks, db )
         else : # default
             self.calc_ranks_py( self.tourn_id, self.players, ranks, db )
-        #~ else:
-            #~ log.error( "game "+str(self.id)+" : ranking unsuitable for trueskill " + str(ranks) )
 
-        ## this should go out
         # update rankings
         for i, p in enumerate(db.retrieve("select bot_id from Tourn_Entries where tourn_id=1 order by skill desc",())):
             db.update_player_rank( self.tourn_id, p[0], i+1 )
         db.con.commit()
 
+        # after each game, remove all the bots and restart the new tournament
         self.mananger.resetBotList()
         db.update_tournament_activity( self.tourn_id )
         db.con.commit()
@@ -356,14 +368,12 @@ class TCPGameServer(object):
         book.players.add(name)
         return len(game.bots)
 
-
     def bind(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((self.ip,self.port))
         log.info('Listening to port %d ...' % self.port)
         self.server.listen(self.backlog)
-
 
     def shutdown(self):
         log.info('Shutting down server...')
@@ -390,7 +400,6 @@ class TCPGameServer(object):
         f.close()
         return map_path, data, int(nplayers)
 
-
     def create_game(self, mananger):
         # get a map and create antsgame
         self.latest += 1
@@ -403,7 +412,6 @@ class TCPGameServer(object):
         book.games.add(g.id)
         return g
 
-
     def reject_client(self,client, message,dolog=True):
         try:
             if dolog:
@@ -413,7 +421,6 @@ class TCPGameServer(object):
             client = None
         except:
             pass
-
 
     def kill_client(self, client, message, dolog=True, name = ""):
         try:
@@ -531,8 +538,6 @@ class TCPGameServer(object):
         self.shutdown()
 
 
-
-
 def main(mananger, ip = '', tcp_port = 2081):
 
     opts = {
@@ -582,4 +587,3 @@ if __name__ == "__main__":
         main(int(sys.argv[1]))
     else:
         main()
-

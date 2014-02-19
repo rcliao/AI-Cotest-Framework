@@ -24,6 +24,7 @@ class HeadTail(object):
         self.capture_head_len = 0
         self.capture_head = unicode('')
         self.capture_tail = unicode('')
+
     def write(self, data):
         if self.file:
             self.file.write(data)
@@ -41,16 +42,21 @@ class HeadTail(object):
         else:
             self.capture_tail += data
             self.capture_tail = self.capture_tail[-self.max_capture:]
+
     def flush(self):
         if self.file:
             self.file.flush()
+
     def close(self):
         if self.file:
             self.file.close()
+
     def head(self):
         return self.capture_head
+
     def tail(self):
         return self.capture_tail
+
     def headtail(self):
         if self.capture_head != '' and self.capture_tail != '':
             sep = unicode('\n..\n')
@@ -58,7 +64,12 @@ class HeadTail(object):
             sep = unicode('')
         return self.capture_head + sep + self.capture_tail
 
+
+'''
+This is where game initially runs
+'''
 def run_game(game, bots, options):
+    ''' For logging '''
     # file descriptors for replay and streaming formats
     replay_log = options.get('replay_log', None)
     stream_log = options.get('stream_log', None)
@@ -71,6 +82,7 @@ def run_game(game, bots, options):
 
     capture_errors = options.get('capture_errors', False)
 
+    ''' game options and setup '''
     turns = int(options['turns'])
     loadtime = float(options['loadtime']) / 1000
     turntime = float(options['turntime']) / 1000
@@ -117,6 +129,8 @@ def run_game(game, bots, options):
         for turn in range(turns+1):
             #~ print turn, bots
             if turn == 0:
+                # game is an ant object
+                # similar to game.init()
                 game.start_game()
 
             # send game state to each player
@@ -145,6 +159,7 @@ def run_game(game, bots, options):
                     stream_log.write('score %s\n' % ' '.join([str(s) for s in game.get_scores()]))
                     stream_log.write(game.get_state())
                     stream_log.flush()
+                # processing all other normal turns
                 game.start_turn()
 
             # get moves from each player
@@ -158,15 +173,20 @@ def run_game(game, bots, options):
             else:
                 simul_num = len(bots)
 
+            # create object to hold bot moves
+            # I image this will be used for the replay later
             bot_moves = [[] for b in bots]
             error_lines = [[] for b in bots]
             statuses = [None for b in bots]
             bot_list = [(b, bot) for b, bot in enumerate(bots)
                         if game.is_alive(b)]
             #~ print simul_num, bot_list
+            # not so sure why this have to be randomize
             random.shuffle(bot_list)
             for group_num in range(0, len(bot_list), simul_num):
                 pnums, pbots = zip(*bot_list[group_num:group_num + simul_num])
+                # this get moves will get bot move
+                # if there is error here, update bot status
                 moves, errors, status = get_moves(game, pbots, pnums,
                         time_limit, turn)
                 for p, b in enumerate(pnums):
@@ -192,6 +212,8 @@ def run_game(game, bots, options):
                 for b, moves in enumerate(bot_moves):
                     if game.is_alive(b):
                         #~ bots[b].write( "INFO: %d %s game:%d\n" % (b,bots[b].name,bots[b].game_id) )
+                        # this is processing move and getting the game response
+                        # which is either valid, ignored, or invalid
                         valid, ignored, invalid = game.do_moves(b, moves)
                         if output_logs and output_logs[b]:
                             output_logs[b].write('# turn %s\n' % turn)
@@ -213,6 +235,8 @@ def run_game(game, bots, options):
                             for inv in invalid:
                                 bots[b].write('INFO: invalid ' + str(inv) +'\n')
                             if strict:
+                                # when the move player pass back
+                                # game engine will also remove player from game
                                 game.kill_player(b)
                                 bot_status[b] = 'invalid'
                                 bot_turns[b] = turn
@@ -225,6 +249,7 @@ def run_game(game, bots, options):
                                 output_logs[b].flush()
 
             if turn > 0:
+                # when the turn is done, call finish_turn
                 game.finish_turn()
 
             # send ending info to eliminated bots
@@ -243,6 +268,7 @@ def run_game(game, bots, options):
                 #~ end_line = 'end\nplayers %s\n' % len(bots) + score_line + status_line
                 #~ state = end_line + game.get_player_state(b) + 'go\n'
                 state = 'end\ngame ' + str(bots[b].game_id) + ": " + str(bot_status[b]) + " score: " + str(game.get_scores(b)[0]) + " turn: " + str(turn) + "\ngo\n"
+                # tell bot you are out
                 bots[b].write(state)
                 if input_logs and input_logs[b]:
                     input_logs[b].write(state)
