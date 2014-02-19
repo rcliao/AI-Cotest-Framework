@@ -1,13 +1,27 @@
-CS-Ant-Server
-=============
+AI-Contest-Fremework
+====================
 
-AI Competition Server - Based on the Google AI Challenge (Fall 2011)
+### Description
+The purpose of this project is to create a contest framework that can accept any game engine followed by the specific rule for the AI competition inspired by the Google AI-challenge 2011. The framework will contain a few modules (website, auto-compile system, tournament manager, game engine, and ranking algorithm).
+
+### Goal
+The goal of the framework is to provide a framework for the AI competition that can use any game engine follow by the framework specification.
+
+### TODO
+1. Completely split the game engine out from the server
+2. Write a wiki explaining the architecture and library I plan to use  
+3. Write a wiki for protocol definition  
+4. Re-structure the project architecture to modularize each components named in description  
+5. Implement the website using DJango (Why? Because I want to learn it...)  
+6. Implement the basic auto-compile system that takes source code and compile according to the extension name  
+7. Implement the basic server that takes the compiled code and execute it  
+8. Think of a basic game to play that is not too boring  
 
 ## Dependencies:
-1. Pyton 2.7
+1. Python 2.7
 2. JavaScript for True Skill [Optional]
 
-## How to use the server?
+### Instruction
 
 1. Start tcp-server by
 ```
