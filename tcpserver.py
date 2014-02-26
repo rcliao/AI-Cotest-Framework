@@ -180,6 +180,7 @@ class TcpGame(threading.Thread):
         # this is the game process
         # TODO: change this compile and run file to support other package later
         self.game = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.game.stdin.write('-opts');
         self.game.stdin.write(json.dumps(opts) + '\n')
         self.game.stdin.flush()
 
