@@ -182,17 +182,17 @@ class TcpGame(threading.Thread):
         self.game = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         # send opts to game
-        self.game.stdin.write('-opts\n');
+        self.game.stdin.write('+opts\n');
         self.game.stdin.flush()
         self.game.stdin.write(json.dumps(opts) + '\n')
         self.game.stdin.flush()
 
-        if self.game.stdout.readline().strip() != '-done':
+        if self.game.stdout.readline().strip() != '-job done':
             print 'System failed to start the game'
 
         self.mananger = mananger
 
-    # when the game ends
+    # when the server closes ends
     def __del__(self):
         try:
             book.games.remove(self.id)
@@ -210,7 +210,7 @@ class TcpGame(threading.Thread):
         # get the result after the game being ran
         # where run_game comes from the game engine
         # to separate the game engine, take out here
-        game_result = run_game(self.ants, self.bots, self.opts)
+        game_result = run_game(self.game, self.bots, self.opts)
 
         # ask game for turn number
         self.game.stdin.write('?turn\n')
