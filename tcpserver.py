@@ -174,13 +174,14 @@ class TcpGame(threading.Thread):
         # TODO: changes these socket to sys.stdin ot sys.stdout
         self.bots=[]
         # init the game according the options passed in the constructor
+        # DEPRECATED.
         self.ants = Ants(opts)
 
-        self.gameprocess = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        self.gameprocess.stdin.write(json.dumps(opts) + '\n')
-        self.gameprocess.stdin.flush()
-
-        print self.gameprocess.stdout.readline()
+        # this is the game process
+        # TODO: change this compile and run file to support other package later
+        self.game = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.game.stdin.write(json.dumps(opts) + '\n')
+        self.game.stdin.flush()
 
         self.mananger = mananger
 
