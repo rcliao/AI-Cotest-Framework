@@ -100,13 +100,15 @@ def run_game(game, bots, options):
     if capture_errors:
         error_logs = [HeadTail(log) for log in error_logs]
     try:
-        #~ # create bot sandboxes
+        # create bot sandboxes and test bot connection
         for b, bot in enumerate(bots):
+            ''' Sandbox implementation '''
             #~ bot_cwd, bot_cmd = bot
             #~ sandbox = get_sandbox(bot_cwd,
                     #~ secure=options.get('secure_jail', None))
             #~ sandbox.start(bot_cmd)
             #~ bots.append(sandbox)
+
             bot_status.append('survived')
             bot_turns.append(0)
 
@@ -126,20 +128,19 @@ def run_game(game, bots, options):
 
         if verbose_log:
             verbose_log.write('running for %s turns\n' % turns)
+
         for turn in range(turns+1):
-            #~ print turn, bots
+            # print turn, bots
             if turn == 0:
-                # game is an ant object
-                # similar to game.init()
                 game.start_game()
 
             # send game state to each player
             for b, bot in enumerate(bots):
                 if game.is_alive(b):
-                    #~ print "bot " , b
+                    # print "bot " , b
                     if turn == 0:
                         start = game.get_player_start(b) + 'ready\n'
-                        #~ print start
+                        # print start
                         bot.write(start)
                         if input_logs and input_logs[b]:
                             input_logs[b].write(start)
@@ -147,12 +148,13 @@ def run_game(game, bots, options):
                     else:
                         state = 'turn ' + str(turn) + '\n' + game.get_player_state(b) + 'go\n'
                         bot.write(state)
-                        #~ print state
+                        # print state
                         if input_logs and input_logs[b]:
                             input_logs[b].write(state)
                             input_logs[b].flush()
                         bot_turns[b] = turn
 
+            # process start of turn
             if turn > 0:
                 if stream_log:
                     stream_log.write('turn %s\n' % turn)
@@ -162,7 +164,7 @@ def run_game(game, bots, options):
                 # processing all other normal turns
                 game.start_turn()
 
-            # get moves from each player
+            # set up the turn time accordingly
             if turn == 0:
                 time_limit = loadtime
             else:
@@ -174,14 +176,13 @@ def run_game(game, bots, options):
                 simul_num = len(bots)
 
             # create object to hold bot moves
-            # I image this will be used for the replay later
             bot_moves = [[] for b in bots]
             error_lines = [[] for b in bots]
             statuses = [None for b in bots]
             bot_list = [(b, bot) for b, bot in enumerate(bots)
                         if game.is_alive(b)]
-            #~ print simul_num, bot_list
-            # not so sure why this have to be randomize
+                        
+            # NOTE: not sure why this has to be randomized
             random.shuffle(bot_list)
             for group_num in range(0, len(bot_list), simul_num):
                 pnums, pbots = zip(*bot_list[group_num:group_num + simul_num])

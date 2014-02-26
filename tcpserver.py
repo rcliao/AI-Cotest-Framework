@@ -176,6 +176,12 @@ class TcpGame(threading.Thread):
         # init the game according the options passed in the constructor
         self.ants = Ants(opts)
 
+        self.gameprocess = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.gameprocess.stdin.write(json.dumps(opts) + '\n')
+        self.gameprocess.stdin.flush()
+
+        print self.gameprocess.stdout.readline()
+
         self.mananger = mananger
 
     # when the game ends
