@@ -180,10 +180,15 @@ class TcpGame(threading.Thread):
         # this is the game process
         # TODO: change this compile and run file to support other package later
         self.game = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+        # send opts to game
         self.game.stdin.write('-opts\n');
         self.game.stdin.flush()
         self.game.stdin.write(json.dumps(opts) + '\n')
         self.game.stdin.flush()
+
+        if self.game.stdout.readline().strip() != '-done':
+            print 'System failed to start the game'
 
         self.mananger = mananger
 
@@ -207,12 +212,20 @@ class TcpGame(threading.Thread):
         # to separate the game engine, take out here
         game_result = run_game(self.ants, self.bots, self.opts)
 
+        # ask game for turn number
+        self.game.stdin.write('?turn\n')
+        self.game.stdin.flush()
+
+        turn = int(self.game.stdout.readline().strip())
+
+        print 'I got turn number from process ' + str(turn)
+
         try:
             states = game_result["status"]
         except:
             log.error("broken game %d: %s" % (self.id,game_result) )
             return
-        if self.ants.turn < 1:
+        if turn < 1:
             log.error("broken game %d (0 turns)" % (self.id) )
             return
         scores = game_result["score"]
@@ -243,7 +256,7 @@ class TcpGame(threading.Thread):
             # for each player get the final score of the game and update to the Tourn_GameIndex table
             plr[p] = (scores[i], states[i])
             db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, self.tourn_id, p, self.id))
-        db.add_game( self.tourn_id, self.id, self.map_name, self.ants.turn, draws,json.dumps(plr) )
+        db.add_game( self.tourn_id, self.id, self.map_name, turn, draws,json.dumps(plr) )
 
         # update trueskill
         #~ if sum(ranks) >= len(ranks)-1:
@@ -266,7 +279,7 @@ class TcpGame(threading.Thread):
         ds = time() - starttime
         mins = int(ds / 60)
         secs = ds - mins*60
-        log.info("saved game %d : %d turns %dm %2.2fs" % (self.id,self.ants.turn,mins,secs) )
+        log.info("saved game %d : %d turns %dm %2.2fs" % (self.id,turn,mins,secs) )
         log.info("players: %s" % self.players)
         log.info("ranks  : %s   %s draws" % (ranks, draws) )
         log.info("scores : %s" % scores)

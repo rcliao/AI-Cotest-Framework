@@ -9,9 +9,16 @@ class Game(object):
         sys.stdout.write('-done\n')
         sys.stdout.flush()
 
-if __name__ == "__main__":
-    operation = sys.stdin.readline().strip()
+    def getTurn(self):
+        return self.ants.turn
 
-    if operation == "-opts":
-        opts = sys.stdin.readline()
-        game = Game(json.loads(opts))
+if __name__ == "__main__":
+    while (True):
+        operation = sys.stdin.readline().strip()
+
+        if operation == "-opts":
+            opts = sys.stdin.readline()
+            game = Game(json.loads(opts))
+        elif operation == "?turn":
+            sys.stdout.write(str(game.getTurn()) + '\n')
+            sys.stdout.flush()
