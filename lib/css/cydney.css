@@ -1,0 +1,23 @@
+.no-style {
+  margin: 15px 0px;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-transition: all .2s linear;
+  -moz-transition: all .2s linear;
+  -ms-transition: all .2s linear;
+  -o-transition: all .2s linear;
+  transition: all .2s linear; }
+
+#wrap {
+   width:100%;
+   margin:0 auto;
+}
+#left_col {
+   float:left;
+   width:50%;
+}
+#right_col {
+   float:right;
+   width:50%;
+}
