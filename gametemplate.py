@@ -54,6 +54,7 @@ class Game(object):
 
     def get_stats(self):
         sys.stdout.write(json.dumps(self.ants.get_stats()) + '\n')
+        sys.stdout.flush()
 
     def finish_game(self):
         self.ants.finish_game()
@@ -111,7 +112,7 @@ if __name__ == "__main__":
         elif operation == "-do_moves":
             playerLine = sys.stdin.readline()
             player = int(playerLine)
-            moves = str(json.loads(sys.stdin.readline()))
+            moves = json.loads(sys.stdin.readline())
             game.do_moves(player, moves)
         elif operation == "-finish_turn":
             game.finish_turn()

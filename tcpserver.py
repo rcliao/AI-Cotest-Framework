@@ -228,10 +228,10 @@ class TcpGame(threading.Thread):
         try:
             states = game_result["status"]
         except:
-            log.error("broken game %d: %s" % (self.id,game_result) )
+            logging.error("broken game %d: %s" % (self.id,game_result) )
             return
         if turn < 1:
-            log.error("broken game %d (0 turns)" % (self.id) )
+            logging.error("broken game %d (0 turns)" % (self.id) )
             return
         scores = game_result["score"]
         ranks  = game_result["rank"]
@@ -325,7 +325,8 @@ class TcpGame(threading.Thread):
         try:
             classpath = "jskills/JSkills_0.9.0.jar"+sep+"jskills"
             tsupdater = subprocess.Popen(["java", "-cp", classpath, "TSUpdate"],
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
 
             lines = []
             for i,p in enumerate(players):
@@ -343,10 +344,12 @@ class TcpGame(threading.Thread):
             return
         try:
             result =  tsupdater.stderr.readline().split()
+
             print result
-            if result.find("Maximum iterations")>0:
-                log.error( "jskills:  Maximum iterations reached")
-                return
+
+            #if result.find("Maximum iterations")>0:
+            #    log.error( "jskills:  Maximum iterations reached")
+            return
         except Exception,e:
             log.error( str(e) )
 
@@ -354,13 +357,15 @@ class TcpGame(threading.Thread):
             # this might seem like a fragile way to handle the output of TSUpdate
             # but it is meant as a double check that we are getting good and
             # complete data back
-            result =  tsupdater.stdout.readline().split()
+
+            result = tsupdater.stdout.readline().split()
+
             if len(result)<3:
-                log.error("invalid jskill result " + str(result))
+                logging.error("invalid jskill result " + str(result))
                 return
 
             if str(p) != result[0]:
-                log.error("Unexpected player name in TSUpdate result. %s != %s" % (player, result[0]))
+                logging.error("Unexpected player name in TSUpdate result. %s != %s" % (player, result[0]))
                 break
             ## hmm, java returns floats formatted like: 1,03 here, due to my locale(german) ?
             mu    = float(result[1].replace(",","."))

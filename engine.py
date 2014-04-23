@@ -227,7 +227,7 @@ def run_game(game, bots, options):
                 # processing all other normal turns
                 # game.start_turn()
 
-                logging.warning("starting turn")
+                logging.warning("starting turn " + str(turn))
 
                 game.stdin.write('-start_turn\n')
                 game.stdin.flush()
@@ -378,6 +378,15 @@ def run_game(game, bots, options):
 
                 logging.warning("kill bot " + str(b))
 
+                # game.get_scores(b)[0]
+
+                game.stdin.write("?score\n")
+                game.stdin.flush()
+                game.stdin.write(str(b) + '\n')
+                game.stdin.flush()
+
+                bot_score = json.loads(game.stdout.readline())
+
                 if verbose_log:
                     verbose_log.write('turn %4d bot %s eliminated\n' % (turn, b))
                 if bot_status[b] == 'survived': # could be invalid move
@@ -387,7 +396,7 @@ def run_game(game, bots, options):
                 #~ status_line = 'status %s\n' % ' '.join(map(str, game.order_for_player(b, bot_status)))
                 #~ end_line = 'end\nplayers %s\n' % len(bots) + score_line + status_line
                 #~ state = end_line + game.get_player_state(b) + 'go\n'
-                state = 'end\ngame ' + str(bots[b].game_id) + ": " + str(bot_status[b]) + " score: " + str(game.get_scores(b)[0]) + " turn: " + str(turn) + "\ngo\n"
+                state = 'end\ngame ' + str(bots[b].game_id) + ": " + str(bot_status[b]) + " score: " + str(bot_score) + " turn: " + str(turn) + "\ngo\n"
                 # tell bot you are out
                 bots[b].write(state)
                 if input_logs and input_logs[b]:
@@ -443,7 +452,7 @@ def run_game(game, bots, options):
         game.stdin.write("?scores\n")
         game.stdin.flush()
 
-        score = game.stdout.readline().strip()
+        score = json.loads(game.stdout.readline())
 
         logging.warning("got score!")
 
@@ -518,7 +527,7 @@ def run_game(game, bots, options):
         replay = json.loads(game.stdout.readline())
 
         game_result = {
-            'challenge': game.__class__.__name__.lower(),
+            'challenge': 'ants',
             'location': location,
             'game_id': game_id,
             'status': bot_status,
