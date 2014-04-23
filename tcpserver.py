@@ -213,7 +213,7 @@ class TcpGame(threading.Thread):
         # to separate the game engine, take out here
         game_result = run_game(self.game, self.bots, self.opts)
 
-        logging.warning("finishe running game and start getting turn text")
+        logging.warning("finished running game and start getting turn text")
 
         # ask game for turn number
         self.game.stdin.write('?turn\n')
@@ -254,13 +254,13 @@ class TcpGame(threading.Thread):
         db = game_db.GameDB()
         data = json.dumps(game_result)
 
-        db.add_replay( self.tourn_id, self.id, data )
+        db.add_replay(self.tourn_id, self.id, data)
 
         plr = {}
         for i,p in enumerate(self.players):
             # for each player get the final score of the game and update to the Tourn_GameIndex table
             plr[p] = (scores[i], states[i])
-            db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)",(None, self.tourn_id, p, self.id))
+            db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)", (None, self.tourn_id, p, self.id))
         db.add_game( self.tourn_id, self.id, self.map_name, turn, draws,json.dumps(plr) )
 
         # update trueskill
@@ -439,7 +439,7 @@ class TCPGameServer(object):
         opts = self.opts
         opts['map'] = map_data
 
-        log.info( "game %d %s needs %d players" %(self.latest,map_name,nplayers) )
+        log.info( "game %d %s needs %d players" % (self.latest,map_name,nplayers) )
         g = TcpGame( self.latest, self.tourn_id, opts, map_name, nplayers, mananger)
         book.games.add(g.id)
         return g

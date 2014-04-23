@@ -34,7 +34,6 @@ def removeBot(botname):
 def resetBotList():
 	current_bots = []
 
-
 class botClient(threading.Thread):
 	def __init__(self, cmd, botname):
 		threading.Thread.__init__(self)
@@ -60,7 +59,6 @@ def run():
 				botname = bot[2]
 				if botname not in current_bots:
 					cmd = "java -jar Bots/" + botname + ".jar"
-					print 'started a java bot'
 					addBot(cmd, botname)
 
 		stop = timeit.default_timer()
