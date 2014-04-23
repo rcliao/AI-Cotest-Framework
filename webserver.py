@@ -27,7 +27,7 @@ ch.setFormatter(formatter)
 
 # create logger
 log = logging.getLogger('web')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARNING)
 # add ch to logger
 log.addHandler(ch)
 

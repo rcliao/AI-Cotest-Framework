@@ -41,6 +41,8 @@ log.setLevel(logging.INFO)
 # add ch to logger
 log.addHandler(ch)
 
+DONE_MSG = "--job_done"
+
 BUFSIZ = 4096
 
 MAP_PLAYERS_INDEX = 0
@@ -170,19 +172,16 @@ class TcpGame(threading.Thread):
         self.bot_status = []
         self.map_name = map_name
         self.nplayers = nplayers
-        # this is where bot is, bunch of socket connnection so far
-        # TODO: changes these socket to sys.stdin ot sys.stdout
-        self.bots=[]
-        # init the game according the options passed in the constructor
-        # DEPRECATED.
-        self.ants = Ants(opts)
 
-        # this is the game process
+        # this is where bot is, bunch of socket connnection so far
+        self.bots=[]
+
+        # this is the game wrapper process
         # TODO: change this compile and run file to support other package later
         self.game = subprocess.Popen(['python', 'gametemplate.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         # send opts to game
-        self.game.stdin.write('+opts\n');
+        self.game.stdin.write('+opts\n')
         self.game.stdin.flush()
         self.game.stdin.write(json.dumps(opts) + '\n')
         self.game.stdin.flush()
@@ -207,18 +206,24 @@ class TcpGame(threading.Thread):
         for i,p in enumerate(self.bots):
             p.write( "INFO: game " + str(self.id) + " " + str(self.map_name) + " : " + str(self.players) + "\n" )
 
+        logging.warning("start running game")
+
         # get the result after the game being ran
         # where run_game comes from the game engine
         # to separate the game engine, take out here
         game_result = run_game(self.game, self.bots, self.opts)
 
+        logging.warning("finishe running game and start getting turn text")
+
         # ask game for turn number
         self.game.stdin.write('?turn\n')
         self.game.stdin.flush()
 
-        turn = int(self.game.stdout.readline().strip())
+        turnText = self.game.stdout.readline()
 
-        print 'I got turn number from process ' + str(turn)
+        logging.warning("finished running gane and get the turn text")
+
+        turn = int(turnText)
 
         try:
             states = game_result["status"]
@@ -544,7 +549,6 @@ class TCPGameServer(object):
                 if t % 25 == 1:
                     log.info("%d games, %d players online." % (len(book.games),len(book.players)) )
                     self.kill_list = self.db.get_kill_client()
-                    print(book.players)
 
                 #if t % 250 == 1:
                 #    for player in book.players:

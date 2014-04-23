@@ -60,7 +60,7 @@ def tcp(host, port, bot_command, user, options):
     # start bot
     try:
         import os
-        bot = subprocess.Popen(bot_command,
+        bot = subprocess.Popen(bot_command.split(),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             cwd=".")
