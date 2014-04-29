@@ -18,7 +18,7 @@ import logging
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.CRITICAL)
 # create formatter
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
@@ -468,6 +468,9 @@ def run_game(game, bots, options):
             verbose_log.write(score_line)
             verbose_log.write(status_line)
             verbose_log.flush()
+
+        logging.warning("before sending end to player")
+
         for b, bot in enumerate(bots):
             if (is_alive(game, b)) and (bots[b].sock!=None):
                 #~ score_line ='score %s\n' % ' '.join([str(s) for s in game.get_scores(b)])
@@ -487,11 +490,16 @@ def run_game(game, bots, options):
                 logging.warning("loading scores by player done")
 
                 state = 'end\ngame ' + str(bots[b].game_id) + ": " + str(bot_status[b]) + " score: " + str(score_player) + " turn: " + str(turn) + "\ngo\n"
+
+                logging.warning(state)
+
                 #~ state = end_line + game.get_player_state(b) + 'go\n'
                 bot.write(state)
                 if input_logs and input_logs[b]:
                     input_logs[b].write(state)
                     input_logs[b].flush()
+
+        logging.warning("after sending end to player")
 
     except Exception as e:
         # TODO: sanitize error output, tracebacks shouldn't be sent to workers

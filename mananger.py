@@ -25,14 +25,24 @@ import timeit
 current_bots = []
 
 def addBot(cmd, botname):
-	botClient(cmd, botname).start()
-	current_bots.append(botname)
+	bot = botClient(cmd, botname)
+	bot.setName(botname)
 
-def removeBot(botname):
-	current_bots.remove( botname )
+	for b in current_bots:
+		if not b.is_alive():
+			current_bots.remove(b)
 
-def resetBotList():
-	current_bots = []
+	if not isBotAlive(bot):
+		current_bots.append(bot)
+		bot.start()
+		print bot.getName()
+
+def isBotAlive(bot):
+	for b in current_bots:
+		if b.getName() == bot.getName():
+			return True
+
+	return False
 
 class botClient(threading.Thread):
 	def __init__(self, cmd, botname):
@@ -47,8 +57,6 @@ def run():
 	# create a infinite loop to server for mananger
 	db = game_db.GameDB()
 	while( True ):
-		start = timeit.default_timer()
-
 		last_active = db.get_last_active_tourn()
 
 		active_bots = db.get_live_bots( last_active[0][0] )
@@ -57,16 +65,8 @@ def run():
 			# TODO: implement more language support
 			if bot[3] == "java":
 				botname = bot[2]
-				if botname not in current_bots:
-					cmd = "java -jar Bots/" + botname + ".jar"
-					addBot(cmd, botname)
-
-		stop = timeit.default_timer()
-
-		if (stop - start) > 25:
-			resetBotList()
-			break
-
+				cmd = "java -jar Bots/" + botname + ".jar"
+				addBot(cmd, botname)
 
 def main():
 	run()

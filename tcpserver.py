@@ -29,7 +29,7 @@ import game_db
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.CRITICAL)
 # create formatter
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
@@ -276,7 +276,6 @@ class TcpGame(threading.Thread):
         db.con.commit()
 
         # after each game, remove all the bots and restart the new tournament
-        self.mananger.resetBotList()
         db.update_tournament_activity( self.tourn_id )
         db.con.commit()
 
