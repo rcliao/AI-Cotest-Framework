@@ -45,4 +45,6 @@ if __name__ == '__main__':
 
         manangerThread.start()
     except KeyboardInterrupt:
-        pass
+        manangerThread.kill()
+        tcpthread.kill()
+        webthread.kill()

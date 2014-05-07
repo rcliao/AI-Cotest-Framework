@@ -9,7 +9,7 @@ import logging
 import json
 import random
 import threading
-import trueskill
+from pyskills import trueskill
 import subprocess
 
 from math import ceil, sqrt
@@ -20,7 +20,6 @@ from time import time,asctime
 import datetime
 
 # Game engine speicific
-from ants import Ants
 from engine import run_game
 
 # database

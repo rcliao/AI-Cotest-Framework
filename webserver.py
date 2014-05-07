@@ -136,10 +136,9 @@ class AntsHttpServer(HTTPServer):
         self.cache = {}
         self.cache_file("/favicon.ico","favicon.ico")
         self.cache_file("/tcpclient.py", "clients/tcpclient.py")
-        self.cache_file("/tcpclient.py3", "clients/tcpclient.py3")
         self.cache_dir("js")
-        self.cache_dir("maps")
-        self.cache_dir("data/img")
+        self.cache_dir("css")
+        self.cache_dir("libs")
 
         self.maps = load_map_info()
         self.db = game_db.GameDB()
@@ -175,11 +174,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def __init__(self, *args):
         SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, *args)
 
-    ## this suppresses logging from SimpleHTTPRequestHandler
-    ## comment this method if you want to see them
-    ##def log_message(self,format,*args):
-    ##    pass
-    
     def send_head(self, type='text/html'):
         self.send_response(200)
         self.send_header('Content-type',type)
@@ -265,7 +259,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         apic="^^^"
         return "<p><br> &nbsp;<a href=#top title='crawl back to the top'> " + apic + "</a>"
 
-
+    # DEPRECATED
     def serve_visualizer(self, match):
         try:
             junk,gid = match.group(0).split('.')
@@ -398,6 +392,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "</tr>\n"
         return html
 
+    # DEPRECATED
     def serve_howto(self, match):
         html = self.header( "HowTo" )
         html += """
@@ -417,6 +412,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "</body></html>"
         self.wfile.write(html)
 
+    # DEPRECATED
     def serve_maps(self, match):
         html = self.header( "%d maps" % len(self.server.maps) )
         html += "<table id='maps' class='tablesorter' width='70%'>"
@@ -433,7 +429,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def serve_main(self, match):
-        html = self.header("Ant Server")
+        html = self.header("AI Contest")
         html += self.game_head()
         html += "<tbody>"
         offset=0
@@ -521,7 +517,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "</body></html>"
         self.wfile.write(html)
 
-
+    # DEPRECATED
     def serve_map( self, match ):
         try:
             mapname = match.group(1)
@@ -1080,7 +1076,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header("Location", "/login")
             self.end_headers()
 
-
+    # Main Routing here
     def do_GET(self):
 
         if self.path == '/':
