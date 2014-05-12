@@ -4,8 +4,9 @@
 import tcpserver
 import webserver
 import threading
-import signal
 import mananger
+
+import sys
 
 class WebThread(threading.Thread):
     def __init__(self, manangerThread):
@@ -38,13 +39,17 @@ if __name__ == '__main__':
 
     try:
         manangerThread = ManangerThread()
+        manangerThread.daemon = True
         tcpthread = TCPThread(manangerThread)
-        tcpthread.start()
+        tcpthread.daemon = True
         webthread = WebThread(manangerThread)
-        webthread.start()
+        webthread.daemon = True
 
+        tcpthread.start()
+        webthread.start()
         manangerThread.start()
-    except KeyboardInterrupt:
-        manangerThread.kill()
-        tcpthread.kill()
-        webthread.kill()
+
+        while True:
+            pass
+    except (KeyboardInterrupt, SystemExit):
+        sys.exit()

@@ -31,101 +31,6 @@ log.setLevel(logging.WARNING)
 # add ch to logger
 log.addHandler(ch)
 
-# TODO: maybe creating another stylesheet file would be easier for our life ...
-#   Instead of this static css file throughout the website
-style = """
-    a{
-        text-decoration: none;
-        color:#000;
-    }
-    a:hover{
-        color:#aaa;
-    }
-    body {
-        font-family:Calibri,Helvetica,Arial;
-        font-size:11pt;
-        color:#111;
-        width: 1000px;
-        margin: 0 auto;
-        /*background: -webkit-gradient(linear, left top, 0% 100%, from(#E6E6B8), to(#4C4C3D));*/
-        background-color: rgb(82,82,77);
-        background-image: -webkit-gradient(linear, 0 0, 0 100%, color-stop(.1, rgba(255, 255, 255, .3)), color-stop(.5, transparent), to(transparent));
-        -webkit-background-size: 5px 3px;
-    }
-    #wrapper {
-        margin: 0px auto;
-        padding: 10px 10px;
-        width: 1000px;
-        min height: 600px;
-        background: #F0F0F0;
-        border-style:groove;
-        border-width:5px;
-        border-color:#FFCC33;
-        border-top-style:none;
-    }
-    #headerIMG {
-        width:1020px;
-        border-style:groove;
-        border-width:5px;
-        border-color:#FFCC33;
-        border-top-style:none;
-        border-bottom-style:none;
-    }
-    #headerwrap {
-        width: 1000px;
-        float: left;
-        margin: 0 auto;
-    }
-    #header {
-        font-size:14pt;
-        color:#FFF;
-        height: 40px;
-        background: #FFCC33;
-        /*border-radius: 10px;*/
-        border: 1px solid #ebb81f;
-        margin: 10px;
-        padding: 5px;
-    }
-    .tournament-switch {
-        text-align: center;
-    }
-    hr {
-        color:#111;
-        background-color:#555;
-    }
-    table.tablesorter {
-        background-color: #CDCDCD;
-        font-family: Calibri,Helvetica,Arial;
-        font-size: 11pt;
-        margin: 10px 10px 15px 10px;
-        text-align:left;
-    }
-    table.tablesorter thead tr th tfoot  {
-        background-color:#E6EEEE;
-        border:1px solid #FFFFFF;
-        font-size:8pt;
-        padding:4px 40px 4px 4px;
-        background-position:right center;
-        background-repeat:no-repeat;
-        cursor:pointer;
-    }
-    table.tablesorter tbody td {
-        background-color:#FFFFFF;
-        color:#3D3D3D;
-        padding:4px;
-        vertical-align:top;
-    }
-    table.tablesorter tbody tr.odd td {
-        background-color:#F0F0F6;
-    }
-    table.tablesorter thead tr .headerSortUp {
-        background-color:#AAB;
-    }
-    table.tablesorter thead tr .headerSortDown {
-        background-color:#BBC;
-    }
-"""
-
 table_lines = 100
 
 class AntsHttpServer(HTTPServer):
@@ -134,8 +39,7 @@ class AntsHttpServer(HTTPServer):
 
         ## anything static gets cached on startup here.
         self.cache = {}
-        self.cache_file("/favicon.ico","favicon.ico")
-        self.cache_file("/tcpclient.py", "clients/tcpclient.py")
+        # self.cache_file("/favicon.ico","favicon.ico")
         self.cache_dir("js")
         self.cache_dir("css")
         self.cache_dir("libs")
@@ -189,19 +93,88 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         self.tourn_name = self.server.db.get_tournament_name(self.server.tourn_id)[0][0]
 
-        head = """<html><head>
+        head = """<!DOCTYPE html><html><head>
         <!--link rel="icon" href='/favicon.ico'-->
+        <meta charset="utf-8">
+        <meta name="viewport" content="height=device-height, width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
         <title>"""  + title + """</title>
-        <style>"""  + style + """</style>"""
+        <link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="libs/semantic-ui/css/semantic.css">
+        <link rel="stylesheet" href="css/styles.css">
+        """
+
         if str(self.server.opts['sort'])=='True':
             head += """
-                <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
                 <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
                 <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
                 """
-        head += """</head><body><b>
-        <div id="headerIMG">
-        <img src="/data/img/header4ants.jpg">
+                
+        head += """</head><body>
+        <script type="text/javascript" src="libs/jquery/jquery.js"></script>
+        <script type="text/javascript" src="libs/semantic-ui/javascript/semantic.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $('.ui.dropdown.item')
+                    .dropdown()
+                ;
+
+                $('#tourn_switch').click(function() {
+                    $('.ui.dropdown.item')
+                        .dropdown('toggle')
+                    ;
+                });
+            });
+        </script>
+        <div class="ui page grid">
+            <h1 class="ui icon center aligned header">
+                <i class="puzzle piece icon"></i>
+                AI Contest
+            </h1>
+            <div>
+                <div class="ui menu">
+                    <div class="menu">
+                        <div id="tourn_switch" class="ui dropdown item">
+                            """ + self.tourn_name + """<i class="icon dropdown"></i>
+                            <div class="menu">"""
+
+        for tourn in self.tourns:
+            head += "<a class=\"item\">" + tourn[2] + "</a>"
+
+        head += """
+                            </div>
+                        </div>
+                        <a class="active item">
+                            <i class="home icon"></i> Home
+                        </a>
+                        <a class="item">
+                            <i class="gamepad icon"></i> Games
+                        </a>
+                        <a class="item">
+                            <i class="trophy icon"></i> Rankings
+                        </a>
+                        <div class="right menu">
+                            <div class="item">
+                                <div class="ui small icon input">
+                                    <input type="text" placeholder="Username">
+                                    <i class="user icon"></i>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="ui small icon input">
+                                    <input type="text" placeholder="Password">
+                                    <i class="key icon"></i>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="ui icon button">
+                                    <i class="lock icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="wrapper">
         <div id = "headerwrap">
@@ -429,7 +402,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def serve_main(self, match):
-        html = self.header("AI Contest")
+        html = self.header("AI_Contest")
         html += self.game_head()
         html += "<tbody>"
         offset=0
@@ -565,7 +538,16 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     ## static files aer served from cache
     def serve_file(self, match):
-        mime = {'png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','gif':'image/gif','js':'text/javascript','py':'application/python','html':'text/html'}
+        mime = {
+            'png':'image/png',
+            'jpg':'image/jpeg',
+            'jpeg':'image/jpeg',
+            'gif':'image/gif',
+            'js':'text/javascript',
+            'py':'application/python',
+            'html':'text/html',
+            'css' : 'text/css'
+        }
         try:
             junk,end = match.group(0).split('.')
             mime_type = mime[end]
