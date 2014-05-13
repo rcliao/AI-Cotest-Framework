@@ -12,7 +12,7 @@ import cgi
 import Cookie
 
 import urllib
-import urlparse
+from urlparse import urlparse, parse_qs
 
 import game_db
 from tcpserver import load_map_info
@@ -100,8 +100,12 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <title>"""  + title + """</title>
         <link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css">
         <link href="http://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet" type="text/css">
-        <link rel="stylesheet" href="libs/semantic-ui/css/semantic.css">
-        <link rel="stylesheet" href="css/styles.css">
+        """
+                
+        head += """
+        </head><body>
+        <link rel="stylesheet" href="/libs/semantic-ui/css/semantic.css">
+        <link rel="stylesheet" href="/css/styles.css">
         """
 
         if str(self.server.opts['sort'])=='True':
@@ -109,10 +113,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
                 <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
                 """
-                
-        head += """</head><body>
-        <script type="text/javascript" src="libs/jquery/jquery.js"></script>
-        <script type="text/javascript" src="libs/semantic-ui/javascript/semantic.js"></script>
+
+        head += """
+        <script type="text/javascript" src="/libs/jquery/jquery.js"></script>
+        <script type="text/javascript" src="/libs/semantic-ui/javascript/semantic.js"></script>
         <script type="text/javascript">
             $(document).ready(function() {
                 $('.ui.dropdown.item')
@@ -123,6 +127,15 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     $('.ui.dropdown.item')
                         .dropdown('toggle')
                     ;
+                });
+
+                $('#logout').click(function() {
+                    $.ajax({
+                        url: '/logout',
+                        success: function() {
+                            location.reload();
+                        }
+                    });
                 });
             });
         </script>
@@ -139,83 +152,80 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                             <div class="menu">"""
 
         for tourn in self.tourns:
-            head += "<a class=\"item\">" + tourn[2] + "</a>"
+            head += "<a class=\"item\" href='switchTourn?tournID=" + str(tourn[0]) + "'>" + tourn[2] + "</a>"
 
         head += """
                             </div>
                         </div>
-                        <a class="active item">
+                """
+        # determine which menu based on the current path
+        head += """
+                        <a href="/" class="active item">
                             <i class="home icon"></i> Home
                         </a>
-                        <a class="item">
+        """ if self.path == "/" else """
+                        <a href="/" class="item">
+                            <i class="home icon"></i> Home
+                        </a>
+        """
+        head += """
+                        <a href="/games" class="active item">
                             <i class="gamepad icon"></i> Games
                         </a>
-                        <a class="item">
+        """ if self.path == "/games" else """
+                        <a href="/games" class="item">
+                            <i class="gamepad icon"></i> Games
+                        </a>
+        """
+        head += """
+                        <a href="/ranks" class="active item">
                             <i class="trophy icon"></i> Rankings
                         </a>
+        """ if self.path == "ranks" else """
+                        <a href="/ranks" class="item">
+                            <i class="trophy icon"></i> Rankings
+                        </a>
+        """
+
+        # right menu starts
+        head += """
                         <div class="right menu">
-                            <div class="item">
-                                <div class="ui small icon input">
-                                    <input type="text" placeholder="Username">
-                                    <i class="user icon"></i>
-                                </div>
-                            </div>
-                            <div class="item">
-                                <div class="ui small icon input">
-                                    <input type="text" placeholder="Password">
-                                    <i class="key icon"></i>
-                                </div>
-                            </div>
-                            <div class="item">
-                                <div class="ui icon button">
-                                    <i class="lock icon"></i>
-                                </div>
-                            </div>
+        """
+
+        # dashboard
+        if (self.check_auth()):
+            head += """
+            <a href='/user/""" + self.username + """' class="active item">
+                <i class="dashboard icon"></i> Dashboard
+            </a>
+            """ if "/user/" in self.path else """
+            <a href='/user/""" + self.username + """' class="item">
+                <i class="dashboard icon"></i> Dashboard
+            </a>
+            """
+
+        # authentication
+        if (self.check_auth()):
+            head += """
+            <a class="item" id="logout">Hi, """ + self.username + """ logout here!</a>
+            """
+        else:
+            head += """
+            <div class="item">
+                <a href='/login'><i class="unlock icon"></i> Login </a>
+            </div>
+            <div class="item">
+                <a href='/register'><i class="user icon"></i> Register </a>
+            </div>
+            """
+
+        head += """
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div id="wrapper">
-        <div id = "headerwrap">
         """
-        if (self.check_auth()):
-            head += """
-            <a href="/logout">Hi, """ + self.username + """ logout here!</a>
-            """
-        else:
-            head += """<a href='/login' name=top> Login </a> | 
-            <a href='/register' name=top> Register </a>"""
 
-        head += """
-        <hr>
-        <div class="tournament-switch">
-            You are currently at \" """ + self.tourn_name + """ \"
-            <form action="/switchTourn" method="post">
-                <select name="tournID">
-        """
-        for tourn in self.tourns:
-            head += "<option value=\"" + str(tourn[0]) + "\">" + tourn[2] + "</option>"
-        head += """
-            </select>
-            <input type="submit" value="Switch Tournament">
-            </form>
-        </div>
-        <div id="header">
-        <a href='/howto' name=top><img src="/data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/' name=top><img src="/data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/ranking'><img src="/data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/maps'><img src="/data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        """
-        if (self.check_auth()):
-            head += """
-            <a href='/user/""" + self.username + """' title='Profile'> Profile </a>
-            """
-        head += """
-        </div>
-        </div>
-        <br><p></b>
-        """
         return head
 
 
@@ -272,7 +282,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def game_head(self):
-        return """<table id='games' class='tablesorter' width='98%'>
+        return """<table id='games' class='ui table segment tablesorter'>
             <thead><tr><th>Game </th><th>Players</th><th>Turns</th><th>Date</th><th>Map</th></tr></thead>"""
 
 
@@ -371,13 +381,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += """
         Here's how to play a game on TCP...</ br>
         <ol>
-        <li>Download the starter package from <a href="">here</a> and get started with <a href="">tutorial</a></li>
-        <li>Sign up an account</li>
-        <li>Sign in with your account and go to your profile page</li>
-        <li>Upload your bot</li>
-        <li>Once you uploaded your bot, your bot will be automatically enrolled for the "Main Tournament"</li>
-        <li>Check your status under the tournament you selected</li>
-        <li>Play!</li>
+            <li>Download the starter package from <a href="">here</a> and get started with <a href="">tutorial</a></li>
+            <li>Sign up an account</li>
+            <li>Sign in with your account and go to your profile page</li>
+            <li>Upload your bot</li>
+            <li>Once you uploaded your bot, your bot will be automatically enrolled for the "Main Tournament"</li>
+            <li>Check your status under the tournament you selected</li>
+            <li>Play!</li>
         </ol>
         </ br>
         """
@@ -400,9 +410,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += "</body></html>"
         self.wfile.write(html)
 
-
     def serve_main(self, match):
         html = self.header("AI_Contest")
+        html += "<div class=\"sixteen wide column\">"
         html += self.game_head()
         html += "<tbody>"
         offset=0
@@ -415,9 +425,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += self.page_counter("/", self.server.db.num_games( self.server.tourn_id ) )
         html += self.footer()
         html += self.footer_sort('games')
-        html += "</div></body></html>"
+        html += "</div></div></body></html>"
         self.wfile.write(html)
-
 
     def serve_player(self, match):
         # get player name using match(Regex)
@@ -446,8 +455,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html += self.footer_sort('games')
         html += "</body></html>"
         self.wfile.write(html)
-
-
 
     def serve_ranking(self, match):
         html = self.header("Rankings")
@@ -568,9 +575,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             html = self.header("Upload File Here")
             html += """
             <form enctype="multipart/form-data" action="/uploading" method="post">
-            <p>Password: <input type="text" name="password"></p>
-            <p>File: <input type="file" name="file"></p>
-            <p><input type="submit" value="Upload"></p>
+                <p>Password: <input type="text" name="password"></p>
+                <p>File: <input type="file" name="file"></p>
+                <p><input type="submit" value="Upload"></p>
             </form>
             </body></html>
             """
@@ -658,10 +665,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         html = self.header("Register")
         html += """
         <form enctype="multipart/form-data" action="/registering" method="post">
-        <p>Username: <input type="text" name="username"></p>
-        <p>Password: <input type="password" name="password"></p>
-        <p>Email: <input type="text" name="email"></p>
-        <p><input type="submit" value="Register"></p>
+            <p>Username: <input type="text" name="username"></p>
+            <p>Password: <input type="password" name="password"></p>
+            <p>Email: <input type="text" name="email"></p>
+            <p><input type="submit" value="Register"></p>
         </form>
         </body></html>
         """
@@ -723,14 +730,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.wfile.write(html)
 
     def serve_switchTourn(self, match):
-        form = cgi.FieldStorage(
-            fp=self.rfile, 
-            headers=self.headers,
-            environ={'REQUEST_METHOD':'POST',
-                     'CONTENT_TYPE':self.headers['Content-Type'],
-                     })
-
-        t_id = form.getfirst("tournID","")
+        query_params = parse_qs(urlparse(self.path).query)
+        print query_params
+        t_id = int(query_params["tournID"][0])
+        print t_id
         message = ""
 
         if t_id:
@@ -740,11 +743,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         else:
             message = "Please fill out all the fields"
 
-        html = self.header("Tournament Switched")
-        html += message + """
-        </body></html>
-        """
-        self.wfile.write(html)
+        self.send_response(301)
+        self.send_header('Location', '/')
+        self.end_headers()
 
     def serve_enrollTourn(self, match):
         form = cgi.FieldStorage(
@@ -884,50 +885,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         # redirect back to home page
         self.end_headers()
 
-        # dummy way of creating a response
-        html = """<html><head>
-        <!--link rel="icon" href='/favicon.ico'-->
-        <title>User Authentication</title>
-        <style>"""  + style + """</style>"""
-        if str(self.server.opts['sort'])=='True':
-            html += """
-                <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-                <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
-                <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
-                """
-        html += """</head><body><b>
-        <div id="headerIMG">
-        <img src="/data/img/header4ants.jpg">
-        </div>
-        <div id="wrapper">
-        <div id = "headerwrap">
-        """
-        if (self.check_auth()):
-            html += """
-            <a href="/logout">Hi, """ + self.username + """ logout here!</a>
-            """
-        else:
-            html += """<a href='/login' name=top> Login </a> | 
-            <a href='/register' name=top> Register </a>"""
-
-        html += """
-        <div id="header">
-        <a href='/howto' name=top><img src="data/img/gettingStartedIco.png"/> Getting Started </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/' name=top><img src="data/img/gameLogIco.png"/> Games </a> &nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/ranking'><img src="data/img/rankingsIco.png"/> Rankings </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/maps'><img src="data/img/mapsIco.png"/> Maps </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/upload' title='Upload your bot'><img src="data/img/uploadIco.png"/> Upload Bot </a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href='/admin' title='Admin'> Admin </a>
-        </div>
-        </div>
-        <br><p></b>
-        """
-        html += """
-        User has logg out.
-        </body></html>
-        """
-        self.wfile.write(html)
-
     def check_auth(self):
         # an utility function to check if user is logged or not
         cookie = Cookie.SimpleCookie()
@@ -983,9 +940,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 html += "Upload your new bot here </br>"
                 html += """
                 <form enctype="multipart/form-data" action="/uploading" method="post">
-                <p>Bot: <input type="file" name="file"></p>
-                <p><input type="submit" value="Upload" name="Upload"></p>
-                <input type="hidden" name="username" value=""" + user + """>
+                    <p>Bot: <input type="file" name="file"></p>
+                    <p><input type="submit" value="Upload" name="Upload"></p>
+                    <input type="hidden" name="username" value=""" + user + """>
                 </form>
                 """
                 html += "<hr>"
@@ -994,10 +951,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 html += "Create your new Tournament here </br>"
                 html += """ 
                 <form action="/createTourn" method="post">
-                <p>Tournament Name: <input type="text" name="tName"></p>
-                <p>Tournament Password: <input type="password" name="password"></p>
-                <p> - Note: including password will make your tournament private </p>
-                <p><input type="submit" value="Create New Tournament!"></p>
+                    <p>Tournament Name: <input type="text" name="tName"></p>
+                    <p>Tournament Password: <input type="password" name="password"></p>
+                    <p> - Note: including password will make your tournament private </p>
+                    <p><input type="submit" value="Create New Tournament!"></p>
                 </form>
                 """
                 html += "<hr>"
@@ -1066,20 +1023,21 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return
 
         for regex, func in (
+                ('^\/admin', self.serve_admin),
                 ('^\/howto', self.serve_howto),
-                ('^\/ranking/p([0-9]?)', self.serve_ranking),
-                ('^\/ranking', self.serve_ranking),
                 ('^\/howto', self.serve_howto),
-                ('^\/maps', self.serve_maps),
-                ('^\/register', self.serve_register),
                 ('^\/login', self.serve_login),
                 ('^\/logout', self.serve_logout),
-                ('^\/admin', self.serve_admin),
                 ('^\/map(\/.*)', self.serve_map),
-                ('^\/player\/(.*)', self.serve_player),
-                ('^\/user\/(.*)', self.serve_user),
-                ('^\/replay\.([0-9]+)', self.serve_visualizer),
+                ('^\/maps', self.serve_maps),
                 ('^\/p([0-9]?)', self.serve_main),
+                ('^\/player\/(.*)', self.serve_player),
+                ('^\/ranking', self.serve_ranking),
+                ('^\/ranking/p([0-9]?)', self.serve_ranking),
+                ('^\/register', self.serve_register),
+                ('^\/replay\.([0-9]+)', self.serve_visualizer),
+                ('^\/switchTourn', self.serve_switchTourn),
+                ('^\/user\/(.*)', self.serve_user),
                 ('^\/?(.*)', self.serve_file),
                 ):
             match = re.search(regex, self.path)
@@ -1099,7 +1057,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/auth', self.serve_auth),
                 ('^\/createTourn', self.serve_createTourn),
                 ('^\/deleteTourn', self.serve_deleteTourn),
-                ('^\/switchTourn', self.serve_switchTourn),
                 ('^\/enrollTourn', self.serve_enrollTourn),
                 ):
             match = re.search(regex, self.path)
