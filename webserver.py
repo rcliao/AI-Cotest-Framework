@@ -10,6 +10,8 @@ import SimpleHTTPServer
 import socket
 import cgi
 import Cookie
+import zipfile
+import shutil
 
 import urllib
 from urlparse import urlparse, parse_qs
@@ -158,7 +160,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                             <div class="menu">"""
 
         for tourn in self.tourns:
-            head += "<a class=\"item\" href='switchTourn?tournID=" + str(tourn[0]) + "'>" + tourn[2] + "</a>"
+            head += "<a class=\"item\" \
+                href='switchTourn?tournID=" + str(tourn[0]) + "'>" + tourn[3] + "</a>"
 
         head += """
                             </div>
@@ -290,7 +293,15 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def game_head(self):
         return """<table id='games' class='ui table segment tablesorter'>
-            <thead><tr><th>Game </th><th>Players</th><th>Turns</th><th>Date</th><th>Map</th></tr></thead>"""
+            <thead>
+                <tr>
+                    <th>Game</th>
+                    <th>Players</th>
+                    <th>Turns</th>
+                    <th>Date</th>
+                    <th>Map</th>
+                </tr>
+            </thead>"""
 
 
     def game_line(self, g):
@@ -440,10 +451,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if match and (len(match.group(0))>2):
             offset=table_lines * int(match.group(0)[2:])
 
-        for g in self.server.db.get_games(self.server.tourn_id, offset,table_lines):
+        for g in self.server.db.get_tourn_games(self.server.tourn_id, offset,table_lines):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/", self.server.db.num_games( self.server.tourn_id ) )
+        html += self.page_counter("/", self.server.db.num_tourn_games( self.server.tourn_id ) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</div></div></body></html>"
@@ -468,10 +479,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             toks = match.group(0).split("/")
             if len(toks)>3:
                 offset=table_lines * int(toks[3][1:])
-        for g in self.server.db.get_games_for_player(self.server.tourn_id, offset, table_lines, player):
+        for g in self.server.db.get_tourn_games_for_player(self.server.tourn_id, offset, table_lines, player):
             html += self.game_line(g)
         html += "</tbody></table>"
-        html += self.page_counter("/player/"+player+"/", self.server.db.num_games_for_player(self.server.tourn_id, player) )
+        html += self.page_counter("/player/"+player+"/", self.server.db.num_tourn_games_for_player(self.server.tourn_id, player) )
         html += self.footer()
         html += self.footer_sort('games')
         html += "</body></html>"
@@ -708,8 +719,62 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 os.makedirs('games/'+gamename)
 
             # upload the bot under /Bots/ Folder as it is
-            open('games/' + gamename + '/' + fn, 'wb').write(fileitem.file.read())
-            message = 'The file "' + fn + '" was uploaded successfully'
+            open('games/' + gamename + '/' + fn, 'wb').write(
+                fileitem.file.read()
+            )
+
+            # unzip this file
+            with zipfile.ZipFile('games/'+gamename+'/'+fn, "r") as z:
+                z.extractall('games/'+gamename+'/')
+
+            # traverse the directory to find a few important files
+            # 1. main program
+            # 2. instruction page
+            # 3. visualizer
+            files = os.listdir('games/'+gamename+'/')
+            count = 0
+
+            for f in files:
+                if 'main' in f:
+                    count += 1
+                    main = 'games/'+gamename+'/'+f
+                    ext = f.split(".")[1]
+                    if ext == 'py':
+                        language = 'python'
+                    elif ext == 'java':
+                        language = 'java'
+                    elif ext == 'scala':
+                        language = 'scala'
+                    elif ext == 'cpp':
+                        language = 'c++'
+                elif 'index.html' == f:
+                    count += 1
+                    instruction = 'games/'+gamename+'/'+f
+                elif 'visualizer.html' == f:
+                    count += 1
+                    visualizer = 'games/'+gamename+'/'+f
+
+            if count != 3:
+                # error, need all three files
+                # remove all the files since it is not valid game
+                for root, dirs, files in os.walk('games/'+gamename+'/'):
+                    for f in files:
+                        os.unlink(os.path.join(root, f))
+                    for d in dirs:
+                        shutil.rmtree(os.path.join(root, d))
+                message = """
+                    Game was not created because missing one of these files:
+                    <ul>
+                        <li><b>main</b> program</li>
+                        <li><b>index.html</b> for instruction</li>
+                        <li><b>visualizer.html</b> for visualizer</li>
+                    </ul>
+                """
+
+            self.server.db.add_game(username, gamename, language, instruction, visualizer)
+
+            message = 'The game "' + gamename + '" was created successfully'
+
 
         else:
             message = 'No file was uploaded'
@@ -750,12 +815,20 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         tName = form.getfirst("tName","")
         password = form.getfirst("password","")
+        gamename = form.getfirst("gamename", "")
         message = ""
+
+        print 'gamename:' + gamename
 
         if tName:
             # all fields are required
                 log.info("creating tournament: %s" % tName)
-                self.server.db.add_tournament( str(cookie['username'].value), tName, password )
+                self.server.db.add_tournament(
+                    str(cookie['username'].value),
+                    tName,
+                    password,
+                    gamename
+                )
                 message = "Tournament: %s successfully created" % tName
         else:
             message = "Please fill out the name"
@@ -1045,12 +1118,32 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         <label>Game</label>
 
                         <div class="ui selection dropdown" id="switch_tourn_game">
-                            <input type="hidden" name="gender">
-                            <div class="default text">Gender</div>
-                            <i class="dropdown icon"></i>
-                            <div class="menu">
-                                <div class="item" data-value="1">Male</div>
-                                <div class="item" data-value="0">Female</div>
+                            <input type="hidden" name="gamename">"""
+
+                # get games from the database
+                games = self.server.db.get_games()
+                # if there is any game being uploaded display them
+                if games:
+                    html += """
+                                <div class="default text">""" + games[0][2] + """</div>
+                                <i class="dropdown icon"></i>
+                                <div class="menu">
+                    """
+
+                    for game in games:
+                        html += """
+                                    <div class="item" data-value=\"""" + game[2] + """\">
+                                        """ + game[2] + """
+                                    </div>
+                        """
+                # else just display no game created yet
+                else:
+                    html += """
+                                <div class="default text">No Game Created Yet</div>
+                                <i class="dropdown icon"></i>
+                                <div class="menu">
+                    """
+                html += """
                             </div>
                         </div>
 
@@ -1122,13 +1215,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     for tourn in self.user_tourns:
                         html += "<tr>"
                         html += "<td>"
-                        html += tourn[2]
+                        html += tourn[3]
                         html += "</td>"
                         html += "<td>"
-                        html += tourn[4]
+                        html += tourn[5]
                         html += "</td>"
                         html += "<td>"
-                        if tourn[3]:
+                        if tourn[4]:
                             html += "&#10004;"
                         html += "</td>"
                         html += "<td>"

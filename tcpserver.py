@@ -260,7 +260,7 @@ class TcpGame(threading.Thread):
             # for each player get the final score of the game and update to the Tourn_GameIndex table
             plr[p] = (scores[i], states[i])
             db.update("insert into Tourn_GameIndex values(?, ?, ?, ?)", (None, self.tourn_id, p, self.id))
-        db.add_game( self.tourn_id, self.id, self.map_name, turn, draws,json.dumps(plr) )
+        db.add_tourn_game( self.tourn_id, self.id, self.map_name, turn, draws,json.dumps(plr) )
 
         # update trueskill
         #~ if sum(ranks) >= len(ranks)-1:

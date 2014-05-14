@@ -155,7 +155,12 @@ class GameDB():
 		)
 		return zlib.decompress(rep[0][0])
 
-	def num_games( self, t_id ):
+	def get_games( self ):
+		return self.retrieve(
+			"select * from Games"
+		)
+
+	def num_tourn_games( self, t_id ):
 		return int(
 			self.retrieve(
 				"select count(*) from Tourn_Games where tourn_id=?",
@@ -163,7 +168,7 @@ class GameDB():
 			)[0][0]
 		)
 
-	def get_games( self, t_id, offset, num ):
+	def get_tourn_games( self, t_id, offset, num ):
 		return self.retrieve(
 			"select * from Tourn_Games \
 				where tourn_id=? \
@@ -171,7 +176,7 @@ class GameDB():
 			(t_id, num, offset)
 		)
 
-	def get_games_for_player( self, t_id, offset, num, player):
+	def get_tourn_games_for_player( self, t_id, offset, num, player):
 		arr = self.retrieve(
 			"select gameid from Tourn_GameIndex \
 				where tourn_id=? AND player=? \
@@ -188,7 +193,7 @@ class GameDB():
 			g.append( z[0] )
 		return g
 	
-	def num_games_for_player( self, t_id, player ):
+	def num_tourn_games_for_player( self, t_id, player ):
 		return int(
 			self.retrieve(
 				"select count(*) from Tourn_GameIndex \
@@ -334,23 +339,28 @@ class GameDB():
 			(id, t_id, data)
 		)
 		
-	def add_game( self, t_id, i, map, turns, draws, players ):
+	def add_tourn_game( self, t_id, i, map, turns, draws, players ):
 		self.update(
 			"insert into Tourn_Games values(?, ?, ?, ?, ?, ?, ?)",
 			(i, t_id, players, self.now(), map, turns, draws)
 		)
 		
-	def add_tournament( self, username, tournamentname, password):
+	def add_tournament( self, username, tournamentname, password, gamename ):
 		user = self.retrieve(
 			"select * from Users where name=?",
 			(username, )
 		)
+		game_id = self.retrieve(
+			"select id from Games where name=?",
+			(gamename, )
+		)[0][0]
 		if password:
 			self.update(
-				"insert into Tournaments values(?,?,?,?,?,?,?)",
+				"insert into Tournaments values(?,?,?,?,?,?,?,?)",
 				(
 					None,
 					user[0][0],
+					game_id,
 					tournamentname,
 					password,
 					self.now(),
@@ -360,10 +370,11 @@ class GameDB():
 			)
 		else:
 			self.update(
-				"insert into Tournaments values(?,?,?,?,?,?,?)",
+				"insert into Tournaments values(?,?,?,?,?,?,?,?)",
 				(
 					None,
 					user[0][0],
+					game_id,
 					tournamentname,
 					None,
 					self.now(),
@@ -376,6 +387,16 @@ class GameDB():
 		self.update(
 			"insert into Users values(?,?,?,?)",
 			(None, name, password, email)
+		)
+
+	def add_game( self, username, gamename, language, instruction, visualizer ):
+		user_id = self.retrieve(
+			"select id from Users where name = ?",
+			(username, )
+		)[0][0]
+		self.update(
+			"insert into Games values(?,?,?,?,?,?)",
+			(None, user_id, gamename, language, instruction, visualizer)
 		)
 
 	def enroll_bot( self, t_id, bot_id ):
