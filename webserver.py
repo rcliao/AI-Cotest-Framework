@@ -158,6 +158,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                             </div>
                         </div>
                 """
+
         # determine which menu based on the current path
         head += """
                         <a href="/" class="active item">
@@ -411,7 +412,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.wfile.write(html)
 
     def serve_main(self, match):
-        html = self.header("AI_Contest")
+        html = self.header("AI Contest Framework")
         html += "<div class=\"sixteen wide column\">"
         html += self.game_head()
         html += "<tbody>"
@@ -659,6 +660,60 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_response(301)
             self.send_header("Location", "/user/" + username)
             self.end_headers()
+
+    def serve_uploading(self, match):
+        # get the form data from the post request
+        form = cgi.FieldStorage(
+            fp=self.rfile, 
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+                     'CONTENT_TYPE':self.headers['Content-Type'],
+                     })
+
+        # A nested FieldStorage instance holds the file
+        fileitem = form['file']
+        password = form.getfirst('password', '')
+        username = form.getfirst('username', '')
+        botname = form.getfirst('botname', '')
+        t_id = form.getfirst('tID', '')
+
+        
+        if "Upload" in form:
+            # Test if the file was uploaded
+            if fileitem.filename:
+               
+               # strip leading path from file name to avoid directory traversal attacks
+               fn = os.path.basename(fileitem.filename)
+               # upload the bot under /Bots/ Folder as it is
+               open('Bots/' + fn, 'wb').write(fileitem.file.read())
+               message = 'The file "' + fn + '" was uploaded successfully'
+               
+            else:
+               message = 'No file was uploaded'
+
+            # Automatically execute the bot as tcpclient
+            if fn:
+                # init the filename, filepath to create command differently for each extension
+                botname,sep,ext = fn.rpartition('.')
+
+                if ext == 'jar':
+                    command = 'java -jar Bots/' + fn
+                    language = 'java'
+
+                existingBot = self.server.db.get_bot( botname )
+
+                if not existingBot:
+                    # TODO: change to add bot including username later
+                    self.server.db.add_bot( username, botname, language )
+                    bot = self.server.db.get_bot( botname )
+                    self.server.db.enroll_bot( 1, bot[0][0] )
+               
+            
+            html = self.header("File Uploaded")
+            html += message + """
+            </body></html>
+            """
+            self.wfile.write(html)
 
     def serve_register(self, match):
         #TODO add client side check for each of the fields
@@ -920,12 +975,114 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
             if str(cookie['username'].value) == str(user):
         
-                html = self.header( user )
+                html = self.header(user)
 
                 self.user_bots = self.server.db.get_bots(user)
 
+                # Starting of row
+                html += "<div class=\"row three column middle aligned\">"
+
+                # step 1 upload a new game
+                html += "<div class=\"column\">"
+                html += "<div class=\"ui segment\">"
+                html += "<h4 class=\"ui header\">Upload New Game"
+                html += """
+                    <div class="ui sub header">
+                        Upload game as <em>.zip</em> file
+                    </div>
+                </h4>
+                """
+                html += """ 
+                <form class="ui form" action="/uploadGame" method="post">
+                    <div class="field">
+                        <label>Game Name</label>
+                        <input type="file" name="gameName"></p>
+                    </div>
+                    <input type="submit" class="ui button submit fluid" value="Upload New Game">
+                </form>
+                """
+                html += "</div></div>"
+                
+                # the following section is to add/delete tournament
+                # TODO: include a date input here for end date
+                html += "<div class=\"column\">"
+                html += "<div class=\"ui segment\">"
+                html += "<h4 class=\"ui header\">Create Your New Tournament Here"
+                html += """
+                    <div class="ui sub header">
+                        Note: including password will make your tournament private
+                    </div>
+                </h4>
+                """
+                html += """ 
+                <form class="ui form" action="/createTourn" method="post">
+                    <div class="field">
+                        <label>Tournament Name</label>
+                        <input type="text" name="tName"></p>
+                    </div>
+                    <div class="field">
+                        <label>Tournament Password</label>
+                        <div class="ui labeled input">
+                            <input type="password" name="password">
+                            <div class="ui corner label">
+                                <i class="asterisk icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Game</label>
+                        <div class="ui selection dropdown" id="switch_tourn_game">
+                            <input type="hidden" name="gender">
+                            <div class="default text">Gender</div>
+                            <i class="dropdown icon"></i>
+                            <div class="menu">
+                                <div class="item" data-value="1">Male</div>
+                                <div class="item" data-value="0">Female</div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="submit" class="ui button submit fluid" value="Create New Tournament">
+                </form>
+                </div>
+                </div>
+                """
+
+                # the following section is for uploading new bot
+                # note: there is a hidden field include the username field
+                html += "<div class=\"column\">"
+                html += "<div class=\"ui segment\">"
+                html += """
+                <h4 class=\"ui header\">
+                    Upload Your New Bot Here
+                    <div class="sub header">
+                        Bot as executable file
+                    </div>
+                </h4>
+                """
+                html += """
+                <form class="ui form" enctype="multipart/form-data" action="/uploading" method="post">
+                    <div class="field">
+                        <label>Bot</label>
+                        <input type="file" name="file">
+                    </div>
+                    <input type="submit" class="ui fluid button" value="Upload New Bot" name="Upload">
+                    <input type="hidden" name="username" value=""" + user + """>
+                </form>
+                </div>
+                </div>
+                """
+
+                # close of row div
+                html += "</div>"
+                # following section is to show the tournament this user created
+                
+                html += "<div class=\"ui divider\"></div>"
+
                 if len(self.user_bots) >= 1:
-                    html += '<p>Your bot(s) are as follow: </p>'
+                    html += """
+                    <div class="sixteen wide column">
+                        <h3 class="ui header">Your bot(s) are as follow:</h3>
+                    """
                     # case if user already has bot(s) running
                     # show all the bot rank table
                     for bot in self.user_bots:
@@ -934,38 +1091,13 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         html += self.bots_line( bot, user )
                         html += "</tbody></table>"
 
-                # the following section is for uploading new bot
-                # note: there is a hidden field include the username field
-                html += "<hr>"
-                html += "Upload your new bot here </br>"
-                html += """
-                <form enctype="multipart/form-data" action="/uploading" method="post">
-                    <p>Bot: <input type="file" name="file"></p>
-                    <p><input type="submit" value="Upload" name="Upload"></p>
-                    <input type="hidden" name="username" value=""" + user + """>
-                </form>
-                """
-                html += "<hr>"
-                # the following section is to add/delete tournament
-                # TODO: include a date input here for end date
-                html += "Create your new Tournament here </br>"
-                html += """ 
-                <form action="/createTourn" method="post">
-                    <p>Tournament Name: <input type="text" name="tName"></p>
-                    <p>Tournament Password: <input type="password" name="password"></p>
-                    <p> - Note: including password will make your tournament private </p>
-                    <p><input type="submit" value="Create New Tournament!"></p>
-                </form>
-                """
-                html += "<hr>"
-                # following section is to show the tournament this user created
-                
                 self.user_tourns = self.server.db.get_tournaments_user(user)
 
                 if len(self.user_tourns) >= 1:
-                    html += "<p>Tournaments you've created: </p>"
+                    html += "<div class=\"sixteen wide column\">"
+                    html += "<h3 class=\"ui header\">Tournaments you've created: </h3>"
                     html += """
-                    <table id='players' class='tablesorter' width='98%'>
+                    <table id='players' class='ui table' class='tablesorter'>
                         <tr>
                             <th>Tournament Name</th>
                             <th>Created Date</th>
@@ -996,8 +1128,16 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         html += "</tr>"
                     html += """
                     </table>
+                    </div>
                     """
 
+                html += """
+                <script>
+                    $('#switch_tourn_game')
+                        .dropdown()
+                    ;
+                </script>
+                """
                 html += "</body></html>"
                 
                 self.wfile.write(html)
@@ -1053,6 +1193,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         for regex, func in (
                 ('^\/uploading', self.serve_uploading),
+                ('^\/uploadGame', self.serve_uploadGame),
                 ('^\/registering', self.serve_registering),
                 ('^\/auth', self.serve_auth),
                 ('^\/createTourn', self.serve_createTourn),
