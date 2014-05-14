@@ -59,14 +59,16 @@ def run():
 	while( True ):
 		last_active = db.get_last_active_tourn()
 
-		active_bots = db.get_live_bots( last_active[0][0] )
+		if last_active:
 
-		for bot in active_bots:
-			# TODO: implement more language support
-			if bot[3] == "java":
-				botname = bot[2]
-				cmd = "java -jar Bots/" + botname + ".jar"
-				addBot(cmd, botname)
+			active_bots = db.get_live_bots( last_active[0][0] )
+
+			for bot in active_bots:
+				# TODO: implement more language support
+				if bot[3] == "java":
+					botname = bot[2]
+					cmd = "java -jar Bots/" + botname + ".jar"
+					addBot(cmd, botname)
 
 def main():
 	run()
