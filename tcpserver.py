@@ -307,21 +307,25 @@ class TcpGame(threading.Thread):
         db.con.commit()
 
         # after each game, remove all the bots and restart the new tournament
-        db.update_tournament_activity( self.tourn_id )
+        db.update_tournament_activity(self.tourn_id)
         db.con.commit()
 
         # dbg display
         ds = time() - starttime
         mins = int(ds / 60)
         secs = ds - mins*60
-        log.info("saved game %d : %d turns %dm %2.2fs" % (self.id,turn,mins,secs) )
+        log.info("saved game %d : %d turns %dm %2.2fs" % (
+            self.id,
+            turn,
+            mins,
+            secs)
+        )
         log.info("players: %s" % self.players)
-        log.info("ranks  : %s   %s draws" % (ranks, draws) )
+        log.info("ranks  : %s   %s draws" % (ranks, draws))
         log.info("scores : %s" % scores)
         log.info("status : %s" % states)
 
-
-    def calc_ranks_py( self, tourn_id, players, ranks, db ):
+    def calc_ranks_py(self, tourn_id, players, ranks, db):
         class TrueSkillPlayer(object):
             def __init__(self, name, skill, rank):
                 self.name = name
@@ -332,7 +336,13 @@ class TcpGame(threading.Thread):
         ts_players = []
         for i, p in enumerate(players):
             pdata = db.get_player((troun_id, p))
-            ts_players.append( TrueSkillPlayer(i, (pdata[0][6],pdata[0][7]), ranks[i] ) )
+            ts_players.append(
+                TrueSkillPlayer(
+                    i,
+                    (pdata[0][6], pdata[0][7]),
+                    ranks[i]
+                )
+            )
 
         try:
             trueskill.AdjustPlayers(ts_players)
