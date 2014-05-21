@@ -48,6 +48,7 @@ class AntsHttpServer(HTTPServer):
         self.cache_dir("js")
         self.cache_dir("css")
         self.cache_dir("libs")
+        self.cache_dir("games")
 
         self.maps = load_map_info()
         self.db = game_db.GameDB()
@@ -262,11 +263,12 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return "<p><br> &nbsp;<a href=#top title='crawl back to the top'>\
             " + apic + "</a>"
 
-    # DEPRECATED
     def serve_visualizer(self, match):
         try:
             junk, gid = match.group(0).split('.')
-            replaydata = self.server.db.get_replay(1, gid)
+            replaydata = self.server.db.get_replay(self.server.tourn_id, gid)
+            game = self.server.db.get_tourn_game(
+                self.server.tourn_id)[0]
         except Exception, e:
             self.send_error(500, '%s' % (e,))
             return
@@ -274,7 +276,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             <html>
             <head>
                 <title>Ant Canvas</title>
-                <script type="text/javascript" src="/js/visualizer.js">
+                <script type="text/javascript" src="/"""+game[5]+"""">
                 </script>
                 <script type="text/javascript">
                     window.isFullscreenSupported = function() {
@@ -283,7 +285,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
                     function init() {
                         var options = new Options();
-                        options.data_dir = '/data/';
+                        options.data_dir = '/games/"""+game[2]+"""/data/';
                         options.embedded = true;
                         var visualizer=new Visualizer(document.body, options);
                         visualizer.loadReplayData('"""+replaydata+"""');
@@ -752,25 +754,26 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             files = os.listdir('games/'+gamename+'/')
             count = 0
 
-            for f in files:
-                if 'main' in f:
-                    count += 1
-                    main = 'games/'+gamename+'/'+f
-                    ext = f.split(".")[1]
-                    if ext == 'py':
-                        language = 'python'
-                    elif ext == 'java':
-                        language = 'java'
-                    elif ext == 'scala':
-                        language = 'scala'
-                    elif ext == 'cpp':
-                        language = 'c++'
-                elif 'index.html' == f:
-                    count += 1
-                    instruction = 'games/'+gamename+'/'+f
-                elif 'visualizer.html' == f:
-                    count += 1
-                    visualizer = 'games/'+gamename+'/'+f
+            for root, dirs, files in os.walk('games/' + gamename + '/'):
+                for f in files:
+                    if 'main' in f:
+                        count += 1
+                        main = 'games/'+gamename+'/'+f
+                        ext = f.split(".")[1]
+                        if ext == 'py':
+                            language = 'python'
+                        elif ext == 'java':
+                            language = 'java'
+                        elif ext == 'scala':
+                            language = 'scala'
+                        elif ext == 'cpp':
+                            language = 'c++'
+                    elif 'index.html' == f:
+                        count += 1
+                        instruction = 'games/'+gamename+'/'+f
+                    elif 'visualizer.js' == f:
+                        count += 1
+                        visualizer = root + '/' + f
 
             if count != 3:
                 # error, need all three files
@@ -1303,7 +1306,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/replay\.([0-9]+)', self.serve_visualizer),
                 ('^\/switchTourn', self.serve_switchTourn),
                 ('^\/user\/(.*)', self.serve_user),
-                ('^\/?(.*)', self.serve_file),
+                ('^\/games\*\*/?(.*)', self.serve_file),
+                ('^\/*/?(.*)', self.serve_file),
                 ):
             match = re.search(regex, self.path)
             if match:
@@ -1341,7 +1345,6 @@ def main(web_port, workers, root_folder = ''):
         ## read only info
         'host': socket.gethostname(),
     }
-
 
     web = AntsHttpServer(('', web_port), AntsHttpHandler)
     web.workers = workers
