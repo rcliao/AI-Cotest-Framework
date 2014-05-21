@@ -27,7 +27,7 @@ import game_db
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.CRITICAL)
+ch.setLevel(logging.INFO)
 # create formatter
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -61,7 +61,7 @@ book = Bookkeeper()
 
 def load_map_info():
     maps = {}
-    for root, dirs, filenames in os.walk("maps"):
+    for root, dirs, filenames in os.walk("games/Ants/maps"):
         for filename in filenames:
             file = os.path.join(root, filename)
             mf = open(file, "r")
@@ -179,23 +179,6 @@ class TcpGame(threading.Thread):
         # this is where bot is, bunch of socket connnection so far
         self.bots = []
 
-        # this is the game wrapper process
-        # TODO: change this compile and run file to support other package later
-        self.game = subprocess.Popen(
-            ['python', 'gametemplate.py'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE
-        )
-
-        # send opts to game
-        self.game.stdin.write('+opts\n')
-        self.game.stdin.flush()
-        self.game.stdin.write(json.dumps(opts) + '\n')
-        self.game.stdin.flush()
-
-        if self.game.stdout.readline().strip() != '-job done':
-            print 'System failed to start the game'
-
         self.mananger = mananger
 
     # when the server closes ends
@@ -217,7 +200,39 @@ class TcpGame(threading.Thread):
                 + " : " + str(self.players) + "\n"
             )
 
-        logging.warning("start running game")
+        # save result as json to db
+        db = game_db.GameDB()
+
+        log.info("start running game")
+
+        last_active = db.get_last_active_tourn()
+
+        if last_active:
+            game_result = db.get_tourn_game(last_active[0][0])
+            game_language = game_result[0][3]
+            game_name = game_result[0][2]
+
+            log.info("start game " + game_name)
+
+            if game_language == 'python':
+                game_command = ("python games/" + game_name + "/main.py").split(" ")
+
+            self.game = subprocess.Popen(
+                game_command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE
+            )
+
+            # send opts to game
+            self.game.stdin.write('+opts\n')
+            self.game.stdin.flush()
+            self.game.stdin.write(json.dumps(self.opts) + '\n')
+            self.game.stdin.flush()
+
+            if self.game.stdout.readline().strip() != '-job done':
+                print 'System failed to start the game'
+
+        logging.warning(game_command)
 
         # get the result after the game being ran
         # where run_game comes from the game engine
@@ -262,8 +277,6 @@ class TcpGame(threading.Thread):
         for i, p in enumerate(self.players):
             game_result['playernames'].append(p)
 
-        # save result as json to db
-        db = game_db.GameDB()
         data = json.dumps(game_result)
 
         db.add_replay(self.tourn_id, self.id, data)
@@ -546,8 +559,8 @@ class TCPGameServer(object):
         t = 0
         while self.server:
             try:
-                inputready, outputready, exceptready =
-                select.select([self.server], [], [], 0.1)
+                inputready, outputready, exceptready = select.select(
+                    [self.server], [], [], 0.1)
             except select.error, e:
                 log.exception(e)
                 break
@@ -613,8 +626,8 @@ class TCPGameServer(object):
                                 continue
                             # if in 'single game per player(name)' mode,
                             # just reject the connection here..
-                            if (name in book.players)
-                            and (str(self.opts['multi_games']) == "False"):
+                            if ((name in book.players) and
+                               (str(self.opts['multi_games']) == "False")):
                                 self.reject_client(
                                     client,
                                     "%s is already running a game." % name,

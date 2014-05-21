@@ -23,7 +23,9 @@ from tcpserver import load_map_info
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 # create formatter
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 # add formatter to ch
 ch.setFormatter(formatter)
 
@@ -35,11 +37,12 @@ log.addHandler(ch)
 
 table_lines = 100
 
+
 class AntsHttpServer(HTTPServer):
     def __init__(self, *args):
         self.opts = None
 
-        ## anything static gets cached on startup here.
+        # anything static gets cached on startup here.
         self.cache = {}
         # self.cache_file("/favicon.ico","favicon.ico")
         self.cache_dir("js")
@@ -53,20 +56,18 @@ class AntsHttpServer(HTTPServer):
 
         HTTPServer.__init__(self, *args)
 
-
-    def cache_file(self,fname,fpath):
+    def cache_file(self, fname, fpath):
         try:
-            f = open(fpath,"rb")
+            f = open(fpath, "rb")
             data = f.read()
             f.close()
             log.info("added static %s to cache." % fname)
             self.cache[fname] = data
         except Exception, e:
-            log.error("caching %s failed. %s" % (fname,e))
-
+            log.error("caching %s failed. %s" % (fname, e))
 
     def cache_dir(self, dir):
-        for root,dirs,filenames in os.walk(dir):
+        for root, dirs, filenames in os.walk(dir):
             for filename in filenames:
                 # fpath is the actual system path.
                 fpath = os.path.join(root, filename)
@@ -82,19 +83,20 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def send_head(self, type='text/html'):
         self.send_response(200)
-        self.send_header('Content-type',type)
+        self.send_header('Content-type', type)
         self.end_headers()
 
     def header(self, title):
         self.send_head()
 
         if self.check_auth():
-            self.tourns = self.server.db.get_tournaments( username=self.username )
+            self.tourns = self.server.db.get_tournaments(
+                username=self.username)
         else:
             self.tourns = self.server.db.get_tournaments()
 
-
-        self.current_tourn = self.server.db.get_tournament_name(self.server.tourn_id)
+        self.current_tourn = self.server.db.get_tournament_name(
+            self.server.tourn_id)
 
         if self.current_tourn:
             self.tourn_name = self.current_tourn[0][0]
@@ -104,27 +106,35 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         head = """<!DOCTYPE html><html><head>
         <!--link rel="icon" href='/favicon.ico'-->
         <meta charset="utf-8">
-        <meta name="viewport" content="height=device-height, width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
-        <title>"""  + title + """</title>
-        <link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css">
-        <link href="http://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet" type="text/css">
+        <meta name="viewport" content="height=device-height,
+            width=device-width, user-scalable=no, initial-scale=1.0,
+            maximum-scale=1.0">
+        <title>""" + title + """</title>
+        <link href="http://fonts.googleapis.com/css?family=Arvo"
+            rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=PT+Sans"
+            rel="stylesheet" type="text/css">
         """
-                
+
         head += """
         </head><body>
         <link rel="stylesheet" href="/libs/semantic-ui/css/semantic.css">
         <link rel="stylesheet" href="/css/styles.css">
         """
 
-        if str(self.server.opts['sort'])=='True':
+        if str(self.server.opts['sort']) == 'True':
             head += """
-                <script type="text/javascript" src="/js/jquery.tablesorter.min.js"></script>
-                <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+                <script type="text/javascript"
+                    src="/js/jquery.tablesorter.min.js"></script>
+                <script
+                    src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
                 """
 
         head += """
-        <script type="text/javascript" src="/libs/jquery/jquery.js"></script>
-        <script type="text/javascript" src="/libs/semantic-ui/javascript/semantic.js"></script>
+        <script type="text/javascript"
+            src="/libs/jquery/jquery.js"></script>
+        <script type="text/javascript"
+            src="/libs/semantic-ui/javascript/semantic.js"></script>
         <script type="text/javascript">
             $(document).ready(function() {
                 $('.ui.dropdown.item')
@@ -238,9 +248,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         return head
 
-
     def footer_sort(self, id):
-        if str(self.server.opts['sort'])=='True':
+        if str(self.server.opts['sort']) == 'True':
             return """
                 <script>
                 $(document).ready(function() { $("#%s").tablesorter(); });
@@ -249,14 +258,15 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return ""
 
     def footer(self):
-        apic="^^^"
-        return "<p><br> &nbsp;<a href=#top title='crawl back to the top'> " + apic + "</a>"
+        apic = "^^^"
+        return "<p><br> &nbsp;<a href=#top title='crawl back to the top'>\
+            " + apic + "</a>"
 
     # DEPRECATED
     def serve_visualizer(self, match):
         try:
-            junk,gid = match.group(0).split('.')
-            replaydata = self.server.db.get_replay( 1, gid )
+            junk, gid = match.group(0).split('.')
+            replaydata = self.server.db.get_replay(1, gid)
         except Exception, e:
             self.send_error(500, '%s' % (e,))
             return
@@ -264,7 +274,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             <html>
             <head>
                 <title>Ant Canvas</title>
-                <script type="text/javascript" src="/js/visualizer.js"></script>
+                <script type="text/javascript" src="/js/visualizer.js">
+                </script>
                 <script type="text/javascript">
                     window.isFullscreenSupported = function() {
                         return false;
@@ -274,7 +285,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         var options = new Options();
                         options.data_dir = '/data/';
                         options.embedded = true;
-                        var visualizer = new Visualizer(document.body, options);
+                        var visualizer=new Visualizer(document.body, options);
                         visualizer.loadReplayData('"""+replaydata+"""');
                     }
                 </script>
@@ -290,7 +301,6 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             """
         self.wfile.write(html)
 
-
     def game_head(self):
         return """<table id='games' class='ui table segment tablesorter'>
             <thead>
@@ -303,17 +313,23 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </tr>
             </thead>"""
 
-
     def game_line(self, g):
-        html = "<tr><td width=10%><a href='/replay." + str(g[0]) + "' title='Run in Visualizer'> Replay " + str(g[0]) + "</a></td><td>"
-        for key, value in sorted(json.loads(g[2]).iteritems(), key=lambda (k,v): (v,k), reverse=True):
-            html += "&nbsp;&nbsp;<a href='/player/" + str(key) + "' title='"+str(value[1])+"'>"+str(key)+"</a> (" + str(value[0]) + ") &nbsp;"
+        html = "<tr><td width=10%><a href='/replay." + str(g[0]) + "' \
+            title='Run in Visualizer'> Replay " + str(g[0]) + "</a></td><td>"
+        for key, value in sorted(
+            json.loads(g[2]).iteritems(),
+            key=lambda (k, v): (v, k),
+            reverse=True
+        ):
+            html += "<a href='/player/" + str(key) + "' \
+                title='"+str(value[1])+"'>"+str(key)+"</a> \
+                (" + str(value[0]) + ")"
         html += "</td><td>" + str(g[5]) + "</td>"
         html += "</td><td>" + str(g[3]) + "</td>"
-        html += "<td><a href='/map/" + str(g[4]) + "' title='View the map'>" + str(g[4]) + "</a></td>"
+        html += "<td><a href='/map/" + str(g[4]) + "' \
+            title='View the map'>" + str(g[4]) + "</a></td>"
         html += "</tr>\n"
         return html
-
 
     def rank_head(self):
         return """
@@ -333,28 +349,29 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </tr>
             </thead>"""
 
-    def page_counter(self,url,nelems):
-        if nelems < table_lines: return ""
-        html = "<table class='tablesorter'><tr><td>Page</td><td>&nbsp;&nbsp;"
-        for i in range(min((nelems+table_lines)/table_lines,10)):
-            html += "<a href='"+url+"p"+str(i)+"'>"+str(i)+"</a>&nbsp;&nbsp;&nbsp;"
+    def page_counter(self, url, nelems):
+        if nelems < table_lines:
+            return ""
+        html = "<table class='tablesorter'><tr><td>Page</td><td>"
+        for i in range(min((nelems+table_lines)/table_lines, 10)):
+            html += "<a href='"+url+"p"+str(i)+"'>"+str(i)+"</a>"
         html += "</td></tr></table>"
         return html
 
-    def rank_line( self, p ):
+    def rank_line(self, p):
         html = "<tr>"
-        #Bot Rank
-        html += "<td>%d</td>"    % p[4]
-        #Bot Name
-        html += "<td><a href='/player/" + str(p[12]) + "'><b>"+str(p[12])+"</b></a></td>"
-        
+        # Bot Rank
+        html += "<td>%d</td>" % p[4]
+        # Bot Name
+        html += "<td><a href='/player/" + str(p[12]) + "'>\
+            <b>"+str(p[12])+"</b></a></td>"
         html += "<td>%2.4f</td>" % p[5]
         html += "<td>%2.4f</td>" % p[6]
         html += "<td>%2.4f</td>" % p[7]
-        html += "<td>%d</td>"    % p[8]
-        html += "<td>%s</td>"    % p[3]
+        html += "<td>%d</td>" % p[8]
+        html += "<td>%s</td>" % p[3]
         html += "<td><a href='/ranks?%s'><b>delete</b></a></td>" % str("delete=" + str(p[2]))
-        html += "<td>%s</td>"    % p[9]
+        html += "<td>%s</td>" % p[9]
         html += "</tr>\n"
         return html
 
@@ -370,10 +387,11 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </tr>
             </thead>"""
 
-    def bots_line( self, p, username ):
+    def bots_line(self, p, username):
         html = "<tr>"
-        #Bot Name
-        html += "<td><a href='/player/" + str(p[0]) + "'><b>"+str(p[0])+" @ " + p[4] + "</b></a></td>"
+        # Bot Name
+        html += "<td><a href='/player/" + str(p[0]) + "'>\
+            <b>"+str(p[0])+" @ " + p[4] + "</b></a></td>"
         if p[1]:
             html += "<td style='color: green;'> Active </td>"
         else:
@@ -394,9 +412,9 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         for tourn in self.tourns:
             tourn_bots = self.server.db.get_bot_tournaments( tourn[0], p[2] )
             if len(tourn_bots) > 0:
-                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\" checked>" + tourn[2] + "</br>"
+                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\" checked>" + tourn[3] + "</br>"
             else:
-                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\">" + tourn[2] + "</br>"
+                html += "<input type=\"checkbox\" name=\"tournID\" value=\"" + str(tourn[0]) + "\">" + tourn[3] + "</br>"
         html += """
             <input type="hidden" name="botID" value=""" + str(p[2]) + """>
             <input type='hidden' name='username' value=\"""" + username + """\">
@@ -623,7 +641,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_uploading(self, match):
         # get the form data from the post request
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -636,17 +654,17 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         botname = form.getfirst('botname', '')
         t_id = form.getfirst('tID', '')
 
-        
+
         if "Upload" in form:
             # Test if the file was uploaded
             if fileitem.filename:
-               
+
                # strip leading path from file name to avoid directory traversal attacks
                fn = os.path.basename(fileitem.filename)
                # upload the bot under /Bots/ Folder as it is
                open('Bots/' + fn, 'wb').write(fileitem.file.read())
                message = 'The file "' + fn + '" was uploaded successfully'
-               
+
             else:
                message = 'No file was uploaded'
 
@@ -666,8 +684,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     self.server.db.add_bot( username, botname, language )
                     bot = self.server.db.get_bot( botname )
                     self.server.db.enroll_bot( 1, bot[0][0] )
-               
-            
+
+
             html = self.header("File Uploaded")
             html += message + """
             </body></html>
@@ -695,7 +713,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def serve_uploadGame(self, match):
         # get the form data from the post request
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -705,10 +723,10 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         fileitem = form['file']
         gamename = form.getfirst('gameName', '')
         username = form.getfirst('username', '')
-        
+
         # Test if the file was uploaded
         if fileitem.filename:
-           
+
             # strip leading path from file name to avoid directory traversal attacks
             fn = os.path.basename(fileitem.filename)
 
@@ -807,7 +825,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             cookie = Cookie.SimpleCookie(self.headers["Cookie"])
 
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -841,7 +859,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def serve_deleteTourn(self, match):
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -883,7 +901,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def serve_enrollTourn(self, match):
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -919,7 +937,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def serve_registering(self, match):
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -972,7 +990,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def serve_auth(self, match):
         form = cgi.FieldStorage(
-            fp=self.rfile, 
+            fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD':'POST',
                      'CONTENT_TYPE':self.headers['Content-Type'],
@@ -1053,7 +1071,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if cookie:
 
             if str(cookie['username'].value) == str(user):
-        
+
                 html = self.header(user)
 
                 self.user_bots = self.server.db.get_bots(user)
@@ -1071,8 +1089,8 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     </div>
                 </h4>
                 """
-                html += """ 
-                <form class="ui form" enctype="multipart/form-data" 
+                html += """
+                <form class="ui form" enctype="multipart/form-data"
                     action="/uploadGame" method="post">
                     <div class="field">
                         <label>Game Name</label>
@@ -1087,7 +1105,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </form>
                 """
                 html += "</div></div>"
-                
+
                 # the following section is to add/delete tournament
                 # TODO: include a date input here for end date
                 html += "<div class=\"column\">"
@@ -1099,7 +1117,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     </div>
                 </h4>
                 """
-                html += """ 
+                html += """
                 <form class="ui form" action="/createTourn" method="post">
                     <div class="field">
                         <label>Tournament Name</label>
@@ -1182,7 +1200,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 # close of row div
                 html += "</div>"
                 # following section is to show the tournament this user created
-                
+
                 html += "<div class=\"ui divider\"></div>"
 
                 if len(self.user_bots) >= 1:
@@ -1246,7 +1264,7 @@ class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </script>
                 """
                 html += "</body></html>"
-                
+
                 self.wfile.write(html)
 
             else:
