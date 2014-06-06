@@ -36,7 +36,7 @@ formatter = logging.Formatter(
 ch.setFormatter(formatter)
 
 # create logger
-log = logging.getLogger('tcp')
+log = logging.getLogger('tournament_manager')
 log.setLevel(logging.INFO)
 # add ch to logger
 log.addHandler(ch)

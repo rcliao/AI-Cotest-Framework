@@ -149,6 +149,12 @@ class ContestDB():
             "select * from Games"
         )
 
+    def get_game(self, game_id):
+        return self.retrieve(
+            "select * from Games where id = ?",
+            (game_id, )
+        )
+
     def num_tourn_games(self, t_id):
         return int(
             self.retrieve(

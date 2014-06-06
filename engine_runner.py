@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#~ from __future__ import print_function
+
 import time
 import traceback
 import os
@@ -12,21 +12,6 @@ if sys.version_info >= (3,):
         return s
 
 import logging
-
-# create console handler and set level to debug
-ch = logging.StreamHandler()
-ch.setLevel(logging.CRITICAL)
-# create formatter
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-# add formatter to ch
-ch.setFormatter(formatter)
-
-# create logger
-log = logging.getLogger('tcp')
-log.setLevel(logging.WARNING)
-# add ch to logger
-log.addHandler(ch)
 
 
 class HeadTail(object):
@@ -82,6 +67,22 @@ def run_game(game, bots, options):
     '''
     This is where game initially runs
     '''
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.CRITICAL)
+    # create formatter
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # create logger
+    log = logging.getLogger('game_runner')
+    log.setLevel(logging.INFO)
+    # add ch to logger
+    log.addHandler(ch)
+
     # file descriptors for replay and streaming formats
     replay_log = options.get('replay_log', None)
     stream_log = options.get('stream_log', None)
@@ -141,31 +142,31 @@ def run_game(game, bots, options):
             # print turn, bots
             if turn == 0:
 
-                logging.warning("game starting")
+                log.info("game starting")
 
                 # game.start_game()
                 game.stdin.write('-start_game\n')
                 game.stdin.flush()
 
-                logging.warning("started game")
+                log.info("started game")
 
                 if game.stdout.readline().strip() != "-job done":
                     print "Error : Game didn't start"
 
             # send game state to each player
             for b, bot in enumerate(bots):
-                logging.warning("testin player alive")
+                log.info("testin player alive")
                 # check if bot is alive
                 # game.is_alive(b)
                 alive = is_alive(game, b)
 
-                logging.warning(
+                log.info(
                     "is player " + str(b) + " alive ?? " + str(alive))
 
                 if alive:
                     if turn == 0:
                         # game.get_player_start(b)
-                        logging.warning("starting player")
+                        log.info("starting player")
 
                         game.stdin.write("?player_start\n")
                         game.stdin.flush()
@@ -181,7 +182,7 @@ def run_game(game, bots, options):
                             input_logs[b].write(start)
                             input_logs[b].flush()
                     else:
-                        logging.warning("geetting player state")
+                        log.info("geetting player state")
 
                         # game.get_player_state(b)
                         game.stdin.write("?player_state\n")
@@ -190,7 +191,7 @@ def run_game(game, bots, options):
 
                         player_state = str(json.loads(game.stdout.readline()))
 
-                        logging.warning("player state done ")
+                        log.info("player state done ")
 
                         state = 'turn ' + str(turn) + '\n' + player_state + 'go\n'
 
@@ -219,12 +220,12 @@ def run_game(game, bots, options):
                 # processing all other normal turns
                 # game.start_turn()
 
-                logging.warning("starting turn " + str(turn))
+                log.info("starting turn " + str(turn))
 
                 game.stdin.write('-start_turn\n')
                 game.stdin.flush()
 
-                logging.warning("started turn")
+                log.info("started turn")
 
                 if game.stdout.readline().strip() != "-job done":
                     print "Error: Game failed to start turn"
@@ -274,7 +275,7 @@ def run_game(game, bots, options):
                     bot_turns[b] = turn
 
             # process all moves
-            logging.warning("check if game is over")
+            log.info("check if game is over")
 
             bot_alive = [is_alive(game, b) for b in range(len(bots))]
             game.stdin.write("?game_over\n")
@@ -284,8 +285,8 @@ def run_game(game, bots, options):
 
             game_over = game_over_text == "True"
 
-            logging.warning("game over text: " + str(game_over_text))
-            logging.warning("game is over: " + str(game_over))
+            log.info("game over text: " + str(game_over_text))
+            log.info("game is over: " + str(game_over))
 
             if turn > 0 and not game_over:
                 for b, moves in enumerate(bot_moves):
@@ -293,7 +294,7 @@ def run_game(game, bots, options):
                         # this is processing move and getting the game response
                         # which is either valid, ignored, or invalid
                         # game.do_moves(b, moves)
-                        logging.warning("processing moves")
+                        log.info("processing moves")
 
                         game.stdin.write('-do_moves\n')
                         game.stdin.flush()
@@ -302,13 +303,13 @@ def run_game(game, bots, options):
                         game.stdin.write(json.dumps(moves) + "\n")
                         game.stdin.flush()
 
-                        logging.warning("finish do moves")
+                        log.info("finish do moves")
 
-                        logging.warning("process moves result")
+                        log.info("process moves result")
 
                         result = json.loads(game.stdout.readline())
 
-                        logging.warning("result " + str(result))
+                        log.info("result " + str(result))
 
                         valid, ignored, invalid = result
                         if output_logs and output_logs[b]:
@@ -351,13 +352,13 @@ def run_game(game, bots, options):
                                 output_logs[b].write('\n'.join(invalid)+'\n')
                                 output_logs[b].flush()
 
-                        logging.warning("finished processing result")
+                        log.info("finished processing result")
 
             if turn > 0:
                 # when the turn is done, call finish_turn
                 # game.finish_turn()
 
-                logging.warning("finishing turn")
+                log.info("finishing turn")
 
                 game.stdin.write("-finish_turn\n")
                 game.stdin.flush()
@@ -365,7 +366,7 @@ def run_game(game, bots, options):
                 if game.stdout.readline().strip() != "-job done":
                     print "ERROR: something is wrnog when finishing turn"
 
-                logging.warning("finished turn")
+                log.info("finished turn")
 
             # send ending info to eliminated bots
             bots_eliminated = []
@@ -374,7 +375,7 @@ def run_game(game, bots, options):
                     bots_eliminated.append(b)
             for b in bots_eliminated:
 
-                logging.warning("kill bot " + str(b))
+                log.info("kill bot " + str(b))
 
                 # game.get_scores(b)[0]
 
@@ -445,7 +446,7 @@ def run_game(game, bots, options):
         # send bots final state and score, output to replay file
         # game.finish_game()
 
-        logging.warning("finishing game")
+        log.info("finishing game")
 
         game.stdin.write('-finish_game\n')
         game.stdin.flush()
@@ -453,16 +454,16 @@ def run_game(game, bots, options):
         if game.stdout.readline().strip() != "-job done":
             print "ERROR: something is wrnog when finishing game"
 
-        logging.warning("game finished")
+        log.info("game finished")
 
-        logging.warning("getting scores")
+        log.info("getting scores")
 
         game.stdin.write("?scores\n")
         game.stdin.flush()
 
         score = json.loads(game.stdout.readline())
 
-        logging.warning("got score!")
+        log.info("got score!")
 
         score_line = 'score %s\n' % ' '.join(map(str, score))
         status_line = 'status %s\n' % ' '.join(map(str, bot_status))
@@ -477,11 +478,11 @@ def run_game(game, bots, options):
             verbose_log.write(status_line)
             verbose_log.flush()
 
-        logging.warning("before sending end to player")
+        log.info("before sending end to player")
 
         for b, bot in enumerate(bots):
             if (is_alive(game, b)) and (bots[b].sock is not None):
-                logging.warning("loading scores by player")
+                log.info("loading scores by player")
 
                 game.stdin.write("?score\n")
                 game.stdin.flush()
@@ -490,18 +491,18 @@ def run_game(game, bots, options):
 
                 score_player = json.loads(game.stdout.readline())
 
-                logging.warning("loading scores by player done")
+                log.info("loading scores by player done")
 
                 state = 'end\ngame ' + str(bots[b].game_id) + ": " + str(bot_status[b]) + " score: " + str(score_player) + " turn: " + str(turn) + "\ngo\n"
 
-                logging.warning(state)
+                log.info(state)
 
                 bot.write(state)
                 if input_logs and input_logs[b]:
                     input_logs[b].write(state)
                     input_logs[b].flush()
 
-        logging.warning("after sending end to player")
+        log.info("after sending end to player")
 
     except Exception as e:
         # TODO: sanitize error output, tracebacks shouldn't be sent to workers

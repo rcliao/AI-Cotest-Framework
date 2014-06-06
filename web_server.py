@@ -1283,6 +1283,40 @@ class ContestHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header("Location", "/login")
             self.end_headers()
 
+    def serve_games(self, match):
+        # get games from the database
+        games = self.server.db.get_games()
+
+        html = self.header('Games')
+
+        html += "<div class=\"sixteen wide column\">"
+
+        for game in games:
+            html += "<a href=\"/game/" + str(game[0]) + "\" >" + game[2] + "</a>"
+
+        html += "</div>"
+
+        self.wfile.write(html)
+
+    def serve_game(self, match):
+        # get player name using match(Regex)
+        game_id = match.group(0).split("/")[2]
+
+        game = self.server.db.get_game(game_id)
+
+        html = self.header('Game: ' + game[0][2])
+
+        html += "<div class=\"sixteen wide column\">"
+
+        with open(game[0][4], "r") as instruction:
+            instruction_html = instruction.read().replace('\n', '')
+            html += instruction_html
+            print instruction_html
+
+        html += "</div>"
+
+        self.wfile.write(html)
+
     # Main Routing here
     def do_GET(self):
 
@@ -1295,6 +1329,8 @@ class ContestHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 ('^\/howto', self.serve_howto),
                 ('^\/howto', self.serve_howto),
                 ('^\/login', self.serve_login),
+                ('^\/games', self.serve_games),
+                ('^\/game/(.*)', self.serve_game),
                 ('^\/logout', self.serve_logout),
                 ('^\/map(\/.*)', self.serve_map),
                 ('^\/maps', self.serve_maps),
