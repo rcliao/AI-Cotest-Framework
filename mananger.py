@@ -1,7 +1,7 @@
 import threading
 
-import tcpclient
-import game_db
+import bot
+import database
 
 """
     This mananger will match live bots in the same tournament, and instantiate
@@ -13,7 +13,7 @@ current_bots = []
 
 
 def addBot(cmd, botname):
-    bot = botClient(cmd, botname)
+    bot = BotClient(cmd, botname)
     bot.setName(botname)
 
     for b in current_bots:
@@ -34,19 +34,19 @@ def isBotAlive(bot):
     return False
 
 
-class botClient(threading.Thread):
+class BotClient(threading.Thread):
     def __init__(self, cmd, botname):
         threading.Thread.__init__(self)
         self.cmd = cmd
         self.botname = botname
 
     def run(self):
-        tcpclient.tcp('localhost', 2081, self.cmd, self.botname, {})
+        bot.tcp('localhost', 2081, self.cmd, self.botname, {})
 
 
 def run():
     # create a infinite loop to server for mananger
-    db = game_db.GameDB()
+    db = database.ContestDB()
     while(True):
         last_active = db.get_last_active_tourn()
 

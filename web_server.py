@@ -16,8 +16,8 @@ import shutil
 import urllib
 from urlparse import urlparse, parse_qs
 
-import game_db
-from tcpserver import load_map_info
+import database
+from tournament_manager import load_map_info
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
@@ -38,7 +38,7 @@ log.addHandler(ch)
 table_lines = 100
 
 
-class AntsHttpServer(HTTPServer):
+class ContestHttpServer(HTTPServer):
     def __init__(self, *args):
         self.opts = None
 
@@ -51,7 +51,7 @@ class AntsHttpServer(HTTPServer):
         self.cache_dir("games")
 
         self.maps = load_map_info()
-        self.db = game_db.GameDB()
+        self.db = database.ContestDB()
 
         self.tourn_id = 1
 
@@ -78,7 +78,7 @@ class AntsHttpServer(HTTPServer):
                 self.cache_file(fname, fpath)
 
 
-class AntsHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class ContestHttpHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def __init__(self, *args):
         SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, *args)
 
@@ -1346,7 +1346,7 @@ def main(web_port, workers, root_folder = ''):
         'host': socket.gethostname(),
     }
 
-    web = AntsHttpServer(('', web_port), AntsHttpHandler)
+    web = ContestHttpServer(('', web_port), ContestHttpHandler)
     web.workers = workers
     web.opts = opts
     web.serve_forever()

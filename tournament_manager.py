@@ -19,10 +19,10 @@ from time import time, asctime
 import datetime
 
 # Game engine speicific
-from engine import run_game
+from engine_runner import run_game
 
 # database
-import game_db
+import database
 
 
 # create console handler and set level to debug
@@ -201,7 +201,7 @@ class TcpGame(threading.Thread):
             )
 
         # save result as json to db
-        db = game_db.GameDB()
+        db = database.ContestDB()
 
         log.info("start running game")
 
@@ -542,7 +542,7 @@ class TCPGameServer(object):
 
     def serve(self):
         # have to create the game before collecting respective num of players:
-        self.db = game_db.GameDB()
+        self.db = database.ContestDB()
         self.kill_list = self.db.get_kill_client()
         games = self.db.retrieve(
             "select id from Tourn_Games \

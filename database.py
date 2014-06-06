@@ -6,7 +6,7 @@ import zlib
 import os
 
 
-class GameDB():
+class ContestDB():
     def __init__(self, file="ai_contenst_db.sqlite3"):
         self.db_is_new = not os.path.exists(file)
         self.con = sqlite3.connect(file)

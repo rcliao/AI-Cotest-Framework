@@ -1,20 +1,22 @@
 # A service that starts everything else, and make connection between server and
 # worker easier instead of relying on the socket connection
 
-import tcpserver
-import webserver
+import tournament_manager
+import web_server
 import threading
 import mananger
 
 import sys
 
+
 class WebThread(threading.Thread):
     def __init__(self, manangerThread):
         threading.Thread.__init__(self)
         self.manangerThread = manangerThread
-        
+
     def run(self):
-        webserver.main(2080, self.manangerThread)
+        web_server.main(2080, self.manangerThread)
+
 
 class TCPThread(threading.Thread):
     def __init__(self, manangerThread):
@@ -22,7 +24,8 @@ class TCPThread(threading.Thread):
         self.manangerThread = manangerThread
 
     def run(self):
-        tcpserver.main(manangerThread)
+        tournament_manager.main(manangerThread)
+
 
 class ManangerThread(threading.Thread):
     def __init__(self):

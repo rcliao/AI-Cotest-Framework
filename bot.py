@@ -2,8 +2,6 @@
 
 import time
 import sys
-import threading
-import re
 import string
 import random
 import subprocess
@@ -133,7 +131,7 @@ def tcp(host, port, bot_command, user, options):
             # if there's no orders, send at least an empty line
             if (client_mess==""):
                 client_mess="\r\n"
-            # doesnt need to print client output anymore                
+            # doesnt need to print client output anymore
             #print( client_mess )
 
             sock.sendall( client_mess )
